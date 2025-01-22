@@ -1,95 +1,106 @@
 import { elizaLogger } from "@elizaos/core";
-import fetch from "node-fetch"; // Replace with a Twitter API SDK if preferred.
+import { z } from "zod";
 
-const TWITTER_API_BASE_URL = "https://api.twitter.com/2";
+export const TwitterConfigSchema = z.object({
+  enabled: z.boolean(),
+  apiKey: z.string().optional(),
+  dryRun: z.boolean().optional().default(false),
+});
 
-/**
- * Fetches replies to a specific tweet.
- * @param tweetId - The ID of the tweet to fetch replies for.
- * @returns An array of feedback messages from the replies.
- */
-export async function fetchTweetReplies(tweetId: string): Promise<string[]> {
-  try {
-    const url = `${TWITTER_API_BASE_URL}/tweets/${tweetId}/replies`;
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tweet replies: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const replies = data.data.map((reply: any) => reply.text);
-
-    elizaLogger.log("Fetched tweet replies:", replies);
-
-    return replies;
-  } catch (error) {
-    elizaLogger.error("Error fetching tweet replies:", error);
-    throw error;
-  }
+export interface TweetAlert {
+  id: string;
+  text: string;
+  action: "none" | "tweet" | "like" | "retweet" | "reply" | "quote" | "follow";
 }
 
-/**
- * Posts a tweet.
- * @param text - The content of the tweet.
- * @returns The ID of the newly posted tweet.
- */
-export async function postTweet(text: string): Promise<string> {
-  try {
-    const url = `${TWITTER_API_BASE_URL}/tweets`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text }),
-    });
+export class TwitterService {
+  private client: any;
+  private config: z.infer<typeof TwitterConfigSchema>;
 
-    if (!response.ok) {
-      throw new Error(`Failed to post tweet: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const tweetId = data.data.id;
-
-    elizaLogger.log("Posted tweet with ID:", tweetId);
-
-    return tweetId;
-  } catch (error) {
-    elizaLogger.error("Error posting tweet:", error);
-    throw error;
+  // Add public getter for config
+  public getConfig() {
+    return this.config;
   }
-}
 
-/**
- * Likes a tweet.
- * @param tweetId - The ID of the tweet to like.
- * @returns True if successful, false otherwise.
- */
-export async function likeTweet(tweetId: string): Promise<boolean> {
-  try {
-    const url = `${TWITTER_API_BASE_URL}/tweets/${tweetId}/like`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
+  constructor(client: any, config: z.infer<typeof TwitterConfigSchema>) {
+    this.client = client;
+    this.config = config;
+  }
 
-    if (!response.ok) {
-      throw new Error(`Failed to like tweet: ${response.statusText}`);
+  async postTweet(alert: TweetAlert): Promise<boolean> {
+    try {
+      if (this.config.dryRun) {
+        elizaLogger.log("Dry run mode - tweet not posted:", alert.text);
+        return true;
+      }
+
+      const response = await this.client.twitterClient.sendTweet({
+        text: alert.text,
+      });
+
+      return { success: true, tweetId: response.id };
+    } catch (error) {
+      elizaLogger.error("Failed to post trade alert to Twitter:", {
+        error: error instanceof Error ? error.message : String(error),
+        alert,
+      });
+      return { success: false, error: error.message };
     }
+  }
 
-    elizaLogger.log(`Liked tweet with ID: ${tweetId}`);
-    return true;
-  } catch (error) {
-    elizaLogger.error("Error liking tweet:", error);
-    return false;
+  async buildConversationThread(alert: TweetAlert): Promise<boolean> {
+    try {
+      if (this.config.dryRun) {
+        elizaLogger.log(
+          "Dry run mode - conversation thread not built:",
+          alert.text,
+        );
+        return true;
+      }
+
+      const response = await this.client.twitterClient.buildConversationThread({
+        text: alert.text,
+        in_reply_to_status_id: alert.id,
+      });
+
+      return true;
+    } catch (error) {
+      elizaLogger.error("Failed to build conversation thread on Twitter:", {
+        error: error instanceof Error ? error.message : String(error),
+        alert,
+      });
+      return false;
+    }
+  }
+
+  async postTweetAlert(alert: TweetAlert): Promise<boolean> {
+    switch (alert.action) {
+      case "tweet":
+        return this.postTweet(alert);
+      case "reply":
+        return this.buildConversationThread(alert);
+      // Add cases for other actions if needed
+      case "none":
+      case "like":
+      case "retweet":
+      case "quote":
+      case "follow":
+      default:
+        elizaLogger.log("No action taken for alert:", alert);
+        return true;
+    }
+  }
+
+  async analyzeFeedback(tweetId: string): Promise<any[]> {
+    try {
+      const response = await this.client.twitterClient.getReplies({
+        tweetId,
+      });
+
+      return response.data || [];
+    } catch (error) {
+      elizaLogger.error("Failed to fetch feedback:", error);
+      return [];
+    }
   }
 }
