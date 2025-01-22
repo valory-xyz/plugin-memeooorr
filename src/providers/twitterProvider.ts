@@ -1,115 +1,141 @@
 import { elizaLogger } from "@elizaos/core";
-import { fetchWithRetry } from "../utils/fetchUtils";
+import fetch from "node-fetch";
+
+interface TwitterPostPayload {
+  text: string;
+  replyTo?: string;
+  quoteTo?: string;
+  mediaIds?: string[];
+}
+
+interface TwitterResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
 
 export class TwitterProvider {
-  private apiUrl: string;
-  private apiKey: string;
+  private static API_BASE_URL = "https://api.twitter.com/2";
+  private static instance: TwitterProvider | null = null;
 
-  constructor(apiUrl: string, apiKey: string) {
-    this.apiUrl = apiUrl;
-    this.apiKey = apiKey;
-
-    if (!this.apiUrl || !this.apiKey) {
-      throw new Error("Twitter API URL or API Key is missing.");
+  private constructor(private apiKey: string) {
+    if (!apiKey) {
+      throw new Error("Twitter API key is required");
     }
+    elizaLogger.log("TwitterProvider initialized.");
   }
 
   /**
-   * Fetch the latest tweets of a user.
-   * @param twitterHandle - The Twitter handle of the user.
-   * @param limit - Maximum number of tweets to fetch.
-   * @returns A list of tweets.
+   * Get the singleton instance of the TwitterProvider.
+   * @param apiKey - The API key for Twitter authentication.
+   * @returns The TwitterProvider instance.
    */
-  async getUserTweets(twitterHandle: string, limit = 10): Promise<any[]> {
-    const url = `${this.apiUrl}/users/${twitterHandle}/tweets?limit=${limit}`;
-    elizaLogger.log(`Fetching tweets for user: ${twitterHandle}`);
-
-    try {
-      const response = await fetchWithRetry(url, {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-      });
-
-      return response.data || [];
-    } catch (error) {
-      elizaLogger.error("Error fetching user tweets:", error);
-      throw error;
+  static getInstance(apiKey: string): TwitterProvider {
+    if (!TwitterProvider.instance) {
+      TwitterProvider.instance = new TwitterProvider(apiKey);
     }
+    return TwitterProvider.instance;
   }
 
   /**
-   * Search for tweets based on a query.
-   * @param query - The search query string.
-   * @param limit - Maximum number of tweets to fetch.
-   * @returns A list of tweets matching the query.
+   * Posts a tweet.
+   * @param payload - The tweet payload.
+   * @returns TwitterResponse indicating success or failure.
    */
-  async searchTweets(query: string, limit = 10): Promise<any[]> {
-    const url = `${this.apiUrl}/tweets/search?query=${encodeURIComponent(query)}&limit=${limit}`;
-    elizaLogger.log(`Searching tweets with query: ${query}`);
+  async postTweet(payload: TwitterPostPayload): Promise<TwitterResponse> {
+    const url = `${TwitterProvider.API_BASE_URL}/tweets`;
 
     try {
-      const response = await fetchWithRetry(url, {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-      });
-
-      return response.data || [];
-    } catch (error) {
-      elizaLogger.error("Error searching tweets:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Like a tweet.
-   * @param tweetId - The ID of the tweet to like.
-   * @returns The response from the API.
-   */
-  async likeTweet(tweetId: string): Promise<boolean> {
-    const url = `${this.apiUrl}/tweets/${tweetId}/like`;
-    elizaLogger.log(`Liking tweet with ID: ${tweetId}`);
-
-    try {
-      const response = await fetchWithRetry(url, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-      });
-
-      return response.success;
-    } catch (error) {
-      elizaLogger.error("Error liking tweet:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Reply to a tweet.
-   * @param tweetId - The ID of the tweet to reply to.
-   * @param text - The text of the reply.
-   * @returns The response from the API.
-   */
-  async replyToTweet(tweetId: string, text: string): Promise<boolean> {
-    const url = `${this.apiUrl}/tweets/${tweetId}/reply`;
-    elizaLogger.log(`Replying to tweet with ID: ${tweetId}`);
-
-    try {
-      const response = await fetchWithRetry(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text: payload.text,
+          in_reply_to_status_id: payload.replyTo,
+          attachment_url: payload.quoteTo,
+          media_ids: payload.mediaIds,
+        }),
       });
 
-      return response.success;
+      const data = await response.json();
+      if (response.ok) {
+        elizaLogger.log("Tweet posted successfully:", data);
+        return { success: true, data };
+      } else {
+        elizaLogger.error("Failed to post tweet:", data);
+        return { success: false, error: data.errors || "Unknown error" };
+      }
     } catch (error) {
-      elizaLogger.error("Error replying to tweet:", error);
-      throw error;
+      elizaLogger.error("Error posting tweet:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Retrieves the latest tweets from a user.
+   * @param username - The Twitter username.
+   * @param limit - The maximum number of tweets to retrieve.
+   * @returns TwitterResponse containing the tweets or an error.
+   */
+  async getUserTweets(
+    username: string,
+    limit: number = 10,
+  ): Promise<TwitterResponse> {
+    const url = `${TwitterProvider.API_BASE_URL}/users/by/username/${username}/tweets?max_results=${limit}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        elizaLogger.log(`Fetched tweets for user ${username}:`, data);
+        return { success: true, data };
+      } else {
+        elizaLogger.error(`Failed to fetch tweets for user ${username}:`, data);
+        return { success: false, error: data.errors || "Unknown error" };
+      }
+    } catch (error) {
+      elizaLogger.error(`Error fetching tweets for user ${username}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Likes a tweet.
+   * @param tweetId - The ID of the tweet to like.
+   * @returns TwitterResponse indicating success or failure.
+   */
+  async likeTweet(tweetId: string): Promise<TwitterResponse> {
+    const url = `${TwitterProvider.API_BASE_URL}/likes/${tweetId}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        elizaLogger.log(`Tweet ${tweetId} liked successfully:`, data);
+        return { success: true, data };
+      } else {
+        elizaLogger.error(`Failed to like tweet ${tweetId}:`, data);
+        return { success: false, error: data.errors || "Unknown error" };
+      }
+    } catch (error) {
+      elizaLogger.error(`Error liking tweet ${tweetId}:`, error);
+      return { success: false, error: error.message };
     }
   }
 }
