@@ -1,9 +1,43 @@
-import { elizaLogger } from "@elizaos/core";
+import {
+  ActionExample,
+  Content,
+  HandlerCallback,
+  IAgentRuntime,
+  Memory,
+  ModelClass,
+  State,
+  elizaLogger,
+  composeContext,
+  generateObject,
+  signMessage,
+} from "@elizaos/core";
+import { validateAbstractConfig } from "../environment";
+
+import {
+  Address,
+  Hex,
+  createWalletClient,
+  erc20Abi,
+  http,
+  parseEther,
+  isAddress,
+  parseUnits,
+  createPublicClient,
+  encodeFunctionData,
+  hexToBytes,
+} from "viem";
+import { abstractTestnet, mainnet, base, celo } from "viem/chains";
+import { normalize } from "viem/ens";
 import { z } from "zod";
+import { ValidateContext } from "../utils";
+import { ETH_ADDRESS, ERC20_OVERRIDE_INFO } from "../constants";
+import { useGetAccount, useGetWalletClient } from "../hooks";
+import { getRawSafeTransactionHash } from "../utils/safetransaction";
 
 export const TokenConfigSchema = z.object({
-  enabled: z.boolean(),
-  apiKey: z.string().optional(),
+  enabled: z.boolean().default(true),
+  memeFactoryContract: z.string(),
+  gnosisSafeContract: z.string(),
   dryRun: z.boolean().optional().default(false),
 });
 
@@ -20,7 +54,9 @@ export interface TokenAction {
 }
 
 export class TokenService {
-  private client: any;
+  private safeAccount: any;
+  private baseClient: any;
+  private celoClient: any;
   private config: z.infer<typeof TokenConfigSchema>;
 
   // Add public getter for config
@@ -28,21 +64,33 @@ export class TokenService {
     return this.config;
   }
 
-  constructor(client: any, config: z.infer<typeof TokenConfigSchema>) {
-    this.client = client;
+  constructor(
+    account: any,
+    baseClient: any,
+    celoClient: any,
+    config: z.infer<typeof TokenConfigSchema>,
+  ) {
+    this.safeAccount = account;
+    this.baseClient = baseClient;
+    this.celoClient = celoClient;
     this.config = config;
   }
 
-  private async performAction(action: TokenAction): Promise<boolean> {
+  private async performAction(
+    data: Hex,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
     try {
       if (this.config.dryRun) {
         elizaLogger.log("Dry run mode - action not performed:", action);
-        return true;
+        return { success: true };
       }
 
-      const response = await this.client.tokenClient.performAction(action);
-
-      return { success: true, response };
+      const hash = await this.safeAccount.sendTransaction({
+        to: runtime?.getSetting("MEMEFACTORY_ADDRESS"),
+        data: data,
+        value: 0n,
+      });
+      return { success: true, hash };
     } catch (error) {
       elizaLogger.error("Failed to perform token action:", {
         error: error instanceof Error ? error.message : String(error),
@@ -52,31 +100,77 @@ export class TokenService {
     }
   }
 
-  async summonToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "summon" });
+  async summonToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    // get transaction hash for summoning meme that will be executed using safe contract
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "summonThisMeme",
+      args: [action.tokenName, action.tokenTicker, action.tokenSupply],
+    });
+
+    return this.performAction(data);
   }
 
-  async heartToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "heart" });
+  async heartToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "heartThisMeme",
+      args: [action.tokenNonce],
+    });
+    return this.performAction(data);
   }
 
-  async unleashToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "unleash" });
+  async unleashToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "unleashThisMeme",
+      args: [action.tokenNonce],
+    });
+    return this.performAction(data);
   }
 
-  async collectToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "collect" });
+  async collectToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "collectThisMeme",
+      args: [action.memeAddress],
+    });
+    return this.performAction(data);
   }
 
-  async purgeToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "purge" });
+  async purgeToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "purgeThisMeme",
+      args: [action.memeAddress],
+    });
+    return this.performAction(data);
   }
 
-  async burnToken(action: TokenAction): Promise<boolean> {
-    return this.performAction({ ...action, action: "burn" });
+  async burnToken(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      function: "scheduleForAscendance",
+      args: [],
+    });
+    return this.performAction(data);
   }
 
-  async executeTokenAction(action: TokenAction): Promise<boolean> {
+  async executeTokenAction(
+    action: TokenAction,
+  ): Promise<{ success: boolean; response?: any; error?: string }> {
     switch (action.action) {
       case "summon":
         return this.summonToken(action);
@@ -92,7 +186,7 @@ export class TokenService {
         return this.burnToken(action);
       default:
         elizaLogger.log("No valid action provided for token:", action);
-        return false;
+        return { success: false, error: "Invalid action" };
     }
   }
 }
