@@ -71,8 +71,11 @@ export const decideTwitterInteractionAction: Action = {
       const response = await generateText({
         runtime,
         context: prompt,
-        modelClass: ModelClass.MEDIUM,
+        modelClass: ModelClass.Large,
       });
+
+      if (!response) {
+        throw new Error("No decision generated.");
 
       // Parse the response as JSON
       const decisions = parseJSONObjectFromText(response);
