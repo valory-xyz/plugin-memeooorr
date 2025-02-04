@@ -1,6 +1,6 @@
 {
   "name": "plugin-memeooorr",
-  "version": "0.1.9-alpha.1",
+  "version": "v0.1.7",
   "main": "dist/index.js",
   "type": "module",
   "types": "dist/index.d.ts",
@@ -14,9 +14,9 @@
     "node-cache": "^5.1.2",
     "bignumber": "1.1.0",
     "bignumber.js": "9.1.2",
-    "@goat-sdk/plugin-coingecko": "0.1.4",
     "tsup": "8.3.5",
-    "ws": "^8.0.0"
+    "ws": "^8.0.0",
+    "axios": "^1.7.9"
   },
   "devDependencies": {
     "vitest": "^1.2.1",

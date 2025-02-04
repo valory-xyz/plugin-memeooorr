@@ -30,6 +30,10 @@ import {
   getWalletBalance,
   getWalletKeypair,
 } from "./wallet";
+import {
+  getTokens,
+  getMemeooorrHandlesFromSubgraph,
+} from "./subgraph"
 import type { ProcessedTokenData } from "./types";
 import type { MemeCoin } from "../types/chain";
 import { analyzeTradeAction } from "./actions/analyzeTrade";
@@ -417,7 +421,7 @@ async function twitterInteraction(
         `Failed to fetch agent handles for ${persona}`
       );
       return;
-    otherTweets = //TODO: Fetch interacted tweets from DB
+    otherTweets = runtime.databaseAdapter.getTweets();
 
 
     const interactionParams: InteractionParams = {
@@ -525,12 +529,11 @@ async function analyzeToken(
         }
 
         // Initialize TokenProvider directly with just the token address
-        const tokenProvider = new TokenProvider(subgraphUrl, tokenQuery);
         const tokenService = new TokenService(account, baseClient, celoClient, config);
 
         // Get processed token data which includes DexScreener data
         elizaLogger.log(`Fetching token data for ${tokenAddress}`);
-        const tokenData = await tokenProvider.getMemeCoins();
+        const tokenData = await getTokens();
         elizaLogger.log(`Token data fetched for ${tokenAddress}:`, tokenData);
 
         latestTweet = await fetchTweet(twitterService);
