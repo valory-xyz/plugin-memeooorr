@@ -23,3 +23,44 @@ export const MAX_TWEETS_PER_HOUR = {
 };
 
 export const MARKET_SEARCH_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+
+export const TOKENS_QUERY = `
+query Tokens {
+  memeTokens {
+    items {
+      blockNumber
+      chain
+      heartCount
+      id
+      isUnleashed
+      isPurged
+      liquidity
+      lpPairAddress
+      owner
+      timestamp
+      memeNonce
+      summonTime
+      unleashTime
+      memeToken
+      name
+      symbol
+    }
+  }
+}
+`;
+
+export const PACKAGE_QUERY = `
+query getPackages($package_type: String!) {
+    units(where: {packageType: $package_type}) {
+        id,
+        packageType,
+        publicId,
+        packageHash,
+        tokenId,
+        metadataHash,
+        description,
+        owner,
+        image
+    }
+}
+`;

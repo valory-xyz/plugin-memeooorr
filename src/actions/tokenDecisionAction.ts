@@ -1,30 +1,57 @@
 import {
-    type Action,
-    elizaLogger,
-    generateText,
-    ModelClass,
-    parseJSONObjectFromText,
+  type Action,
+  type Provider,
+  elizaLogger,
+  generateObject,
+  IAgentRuntime,
+  Memory,
+  ModelClass,
+  parseJSONObjectFromText,
 } from "@elizaos/core";
 
+import { TokenInteractionSchema } from "../types/content";
+import { createPublicClient, http } from "viem";
+import { base, celo } from "viem/chains";
+import { toSafeSmartAccount } from "permissionless/accounts";
+import { privateKeyToAccount } from "viem/accounts";
+import { memeFactoryAbi } from "../abi/memefactory";
+import { createSmartAccountClient } from "permissionless";
+import { TokenService } from "../services/memeService";
 
-
-
-export const decideTokenAction: Action = {
+export const decideTokenAction = (
+  tokenProvider: Provider,
+  actionService: TokenService,
+): Action => {
+  return {
     name: "DECIDE_TOKEN_ACTION",
-    description: "Analyze the current market and make decisions regarding meme coins.",
-    similes: ["TOKEN_ACTION", "DECIDE_ACTION", "MEME_ACTION", "MAXIMIZE_PORTFOLIO"],
+    description:
+      "Analyze the current market and make decisions regarding meme coins.",
+    similes: [
+      "TOKEN_ACTION",
+      "DECIDE_ACTION",
+      "MEME_ACTION",
+      "MAXIMIZE_PORTFOLIO",
+    ],
     examples: [],
     validate: async () => true,
-    handler: async (runtime, memory, state, params, callback) => {
-        try {
-            if (!state) {
-                state = await runtime.composeState(memory);
-            } else {
-                state = await runtime.updateRecentMessageState(state);
-            }
+    handler: async (
+      runtime: IAgentRuntime,
+      message: Memory,
+      state,
+      params,
+      callback,
+    ) => {
+      try {
+        if (!state) {
+          state = await runtime.composeState(message);
+        } else {
+          state = await runtime.updateRecentMessageState(state);
+        }
 
-            const { meme_coins, latest_tweet, tweet_responses, balance, ticker } = params;
-            const TOKEN_DECISION_PROMPT = `You are a cryptocurrency and token expert with a specific persona. You analyze new meme coins that have just been depoyed to the market and
+        const metadata = await tokenProvider.get(runtime, message, state);
+
+        const TOKEN_DECISION_PROMPT = `
+              You are a cryptocurrency and token expert with a specific persona. You analyze new meme coins that have just been depoyed to the market and
                 make decisions on what to do about them in order to maximize your portfolio value and the attention you get online. Sometimes, you also deploy your own memecoins.
                 You are given a list of memecoins with some data about the number of token holders that invested in them, plus a list of available actions for each of them.
                 You are very active on Twitter and one of your goals is to deploy your own memecoin based on your persona once you have enough engagement.
@@ -64,13 +91,13 @@ export const decideTokenAction: Action = {
                 * Execute one action from the available actions for one of the already existing tokens
 
                 Here's the list of existing  memecoins:
-                {meme_coins}
+                "${metadata.meme_coins}"
 
                 Here's your latest tweet:
-                "{latest_tweet}"
+                "${metadata.latest_tweet}"
 
                 Here's a list of tweets that you received as a response to your latest tweet and some engagement metrics.
-                "{tweet_responses}"
+                "${metadata.tweet_responses}"
 
                 You can use these tweets as feedback in order to update your persona if you think that will improve engagement.
 
@@ -90,57 +117,57 @@ export const decideTokenAction: Action = {
                     - amount: the amount (in wei units of {ticker}) to heart (invest) if the action is deploy or heart, or 0 otherwise
                     - tweet: a short tweet to announce the action taken, or empty if none. Please do not include any hastags on the tweet. Remember that tweets can't be longer than 280 characters.
                     - new_persona: a string with your updated persona if you decide to update it, or empty if you don't.
-                * This is incorrect:"```json{{response}}```"
-                * This is incorrect:```json"{{response}}"```
-                * This is correct:"{{response}}"
                 `;
 
-            const prompt = `"""${TOKEN_DECISION_PROMPT}""".replace("
-                {meme_coins}",
-                JSON.stringify(meme_coins, null, 2)
-            )
-                .replace("{latest_tweet}", latest_tweet)
-                .replace("{tweet_responses}", JSON.stringify(tweet_responses, null, 2))
-                .replace("{balance}", balance.toFixed(6))
-                .replace("{ticker}", ticker);
+        // Generate the LLM response
+        const content = await generateObject({
+          runtime,
+          context: TOKEN_DECISION_PROMPT,
+          modelClass: ModelClass.LARGE,
+          schema: TokenInteractionSchema,
+        });
 
-            // Generate the LLM response
-            const content = await generateText({
-                runtime,
-                context: prompt,
-                modelClass: ModelClass.LARGE,
-            });
+        const actions = [
+          "summon",
+          "heart",
+          "unleash",
+          "collect",
+          "purge",
+          "burn",
+        ];
 
-            if (!content) {
-                throw new Error("No decision generated by the model.");
-            }
+        const supportedActions: (typeof actions)[number][] = [...actions];
 
-            elizaLogger.log("Raw token decision response:", content);
+        const decision = content.object as {
+          action: (typeof supportedActions)[number];
+          token_address: string;
+          token_nonce: bigint;
+          token_name: string | null;
+          token_ticker: string | null;
+          token_supply: bigint | null;
+          amount: string;
+          tweet: string;
+          new_persona: string | null;
+        };
 
-            // Parse the JSON response
-            const decision = parseJSONObjectFromText(content);
+        actionService.executeTokenAction(decision);
 
-            if (!decision || typeof decision !== "object") {
-                throw new Error("Invalid decision format.");
-            }
-
-            elizaLogger.log("Parsed token decision:", decision);
-
-            // Execute the callback to communicate the result
-            if (callback) {
-                await callback({
-                    text: JSON.stringify(decision),
-                    type: "token_decision",
-                });
-            }
-
-            return true;
-        } catch (error) {
-            elizaLogger.error("Failed to decide on token action:", {
-                error: error instanceof Error ? error.message : "Unknown error",
-                stack: error instanceof Error ? error.stack : undefined,
-            });
-            return false;
+        // Execute the callback to communicate the result
+        if (callback) {
+          await callback({
+            text: JSON.stringify(decision),
+            type: "token_decision",
+          });
         }
+
+        return true;
+      } catch (error) {
+        elizaLogger.error("Failed to decide on token action:", {
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        return false;
+      }
     },
+  };
 };
