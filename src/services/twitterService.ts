@@ -29,7 +29,7 @@ export const fetchFeedback = async(
   }
 }
 
-export const previousTweets = async(
+export const fetchPreviousTweets = async(
   twitterService: TwitterService
 ) => {
   if (twitterService) {

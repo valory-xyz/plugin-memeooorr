@@ -1,23 +1,9 @@
-import {
-  ActionExample,
-  Content,
-  HandlerCallback,
-  IAgentRuntime,
-  Memory,
-  ModelClass,
-  State,
-  elizaLogger,
-  composeContext,
-  generateObject,
-  signMessage,
-} from "@elizaos/core";
-import { validateAbstractConfig } from "../environment";
+import { elizaLogger } from "@elizaos/core";
 
 import {
   Address,
   Hex,
   createWalletClient,
-  erc20Abi,
   http,
   parseEther,
   isAddress,
@@ -25,14 +11,14 @@ import {
   createPublicClient,
   encodeFunctionData,
   hexToBytes,
+  Client,
 } from "viem";
-import { abstractTestnet, mainnet, base, celo } from "viem/chains";
-import { normalize } from "viem/ens";
+import { privateKeyToAccount } from "viem/accounts";
+import { memeFactoryAbi } from "../abi/memefactory";
+import { toSafeSmartAccount } from "permissionless/accounts";
+import { base, celo } from "viem/chains";
 import { z } from "zod";
-import { ValidateContext } from "../utils";
-import { ETH_ADDRESS, ERC20_OVERRIDE_INFO } from "../constants";
-import { useGetAccount, useGetWalletClient } from "../hooks";
-import { getRawSafeTransactionHash } from "../utils/safetransaction";
+import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 
 export const TokenConfigSchema = z.object({
   enabled: z.boolean().default(true),
@@ -42,21 +28,21 @@ export const TokenConfigSchema = z.object({
 });
 
 export interface TokenAction {
-  action: "summon" | "heart" | "unleash" | "collect" | "purge" | "burn";
-  tokenAddress?: string;
-  tokenNonce?: string;
+  action: string;
+  tokenAddress?: Address;
+  tokenNonce?: bigint;
   tokenName?: string;
   tokenTicker?: string;
-  tokenSupply?: string;
+  tokenSupply?: bigint;
   amount?: string;
   tweet?: string;
   newPersona?: string;
 }
 
 export class TokenService {
-  private safeAccount: any;
-  private baseClient: any;
-  private celoClient: any;
+  private safeAccount: SmartAccountClient;
+  private baseClient: Client;
+  private celoClient: Client;
   private config: z.infer<typeof TokenConfigSchema>;
 
   // Add public getter for config
@@ -64,16 +50,40 @@ export class TokenService {
     return this.config;
   }
 
-  constructor(
-    account: any,
-    baseClient: any,
-    celoClient: any,
-    config: z.infer<typeof TokenConfigSchema>,
-  ) {
-    this.safeAccount = account;
-    this.baseClient = baseClient;
-    this.celoClient = celoClient;
-    this.config = config;
+  constructor() {
+    this.baseClient = createPublicClient({
+      chain: base,
+      transport: http(process.env.VIEM_BASE_RPC_URL),
+    });
+    this.celoClient = createPublicClient({
+      chain: celo,
+      transport: http(process.env.VIEM_CELO_RPC_URL),
+    });
+  }
+
+  private async createSafe() {
+    if (
+      !process.env.VIEM_BASE_PRIVATE_KEY &&
+      !process.env.VIEM_BASE_PRIVATE_KEY
+    ) {
+      throw new Error("Missing base private key");
+    }
+    const ownerAdress = process.env.VIEM_BASE_PRIVATE_KEY as `0x${string}`;
+    const memeaddress = process.env.MEME_FACTORY_CONTRACT as `0x${string}`;
+
+    const owner = privateKeyToAccount(ownerAdress);
+
+    const safeSmartAccount = await toSafeSmartAccount({
+      client: this.baseClient,
+      owners: owner,
+      version: "1.4.1",
+    });
+
+    this.safeAccount = createSmartAccountClient({
+      account: safeSmartAccount,
+      chain: base,
+      bundlerTransport: http(process.env.VIEM_BASE_RPC_URL),
+    });
   }
 
   private async performAction(
@@ -85,8 +95,11 @@ export class TokenService {
         return { success: true };
       }
 
+      const contractAddres: Address = this.config
+        .memeFactoryContract as Address;
+
       const hash = await this.safeAccount.sendTransaction({
-        to: runtime?.getSetting("MEMEFACTORY_ADDRESS"),
+        to: contractAddres,
         data: data,
         value: 0n,
       });
@@ -104,9 +117,13 @@ export class TokenService {
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
     // get transaction hash for summoning meme that will be executed using safe contract
+    if (!action.tokenName || !action.tokenTicker || !action.tokenSupply) {
+      elizaLogger.error("Missing required fields for summoning token:", action);
+      return { success: false, error: "Missing required fields" };
+    }
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "summonThisMeme",
+      abi: memeFactoryAbi,
+      functionName: "summonThisMeme",
       args: [action.tokenName, action.tokenTicker, action.tokenSupply],
     });
 
@@ -116,9 +133,14 @@ export class TokenService {
   async heartToken(
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
+    if (!action.tokenNonce) {
+      elizaLogger.error("Missing required fields for hearting token:", action);
+      return { success: false, error: "Missing required fields" };
+    }
+
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "heartThisMeme",
+      abi: memeFactoryAbi,
+      functionName: "heartThisMeme",
       args: [action.tokenNonce],
     });
     return this.performAction(data);
@@ -128,8 +150,8 @@ export class TokenService {
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "unleashThisMeme",
+      abi: memeFactoryAbi,
+      functionName: "unleashThisMeme",
       args: [action.tokenNonce],
     });
     return this.performAction(data);
@@ -139,8 +161,8 @@ export class TokenService {
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "collectThisMeme",
+      abi: memeFactoryAbi,
+      functionName: "collectThisMeme",
       args: [action.memeAddress],
     });
     return this.performAction(data);
@@ -149,10 +171,15 @@ export class TokenService {
   async purgeToken(
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
+    if (!action.tokenAddress) {
+      elizaLogger.error("Missing required fields for purging token:", action);
+      return { success: false, error: "Missing required fields" };
+    }
+
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "purgeThisMeme",
-      args: [action.memeAddress],
+      abi: memeFactoryAbi,
+      functionName: "purgeThisMeme",
+      args: [action.tokenAddress],
     });
     return this.performAction(data);
   }
@@ -161,8 +188,8 @@ export class TokenService {
     action: TokenAction,
   ): Promise<{ success: boolean; response?: any; error?: string }> {
     const data = encodeFunctionData({
-      abi: erc20Abi,
-      function: "scheduleForAscendance",
+      abi: memeFactoryAbi,
+      functionName: "scheduleForAscendance",
       args: [],
     });
     return this.performAction(data);
