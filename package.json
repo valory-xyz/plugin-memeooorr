@@ -1,8 +1,9 @@
 {
   "name": "@elizaos/plugin-memeooorr",
-  "version": "v0.1.7",
+  "version": "0.1.7",
   "main": "dist/index.js",
   "type": "module",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
@@ -14,8 +15,10 @@
       }
     }
   },
+  "files": [
+    "dist"
+  ],
   "dependencies": {
-    "@elizaos/client-twitter": "0.1.7",
     "@elizaos/core": "0.1.7",
     "@goat-sdk/core": "0.3.8",
     "@goat-sdk/plugin-erc20": "0.1.7",
@@ -40,7 +43,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
-    "whatwg-url": "7.1.0"
+    "whatwg-url": "7.1.0",
+    "zod": "3.23.8",
+    "@goat-sdk/core": "0.3.4"
   },
   "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
 }

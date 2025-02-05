@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@elizaos/client-twitter':
-        specifier: 0.1.7
-        version: 0.1.7(@google-cloud/vertexai@1.9.3)(@langchain/core@0.3.37(openai@4.73.0(zod@3.23.8)))(axios@1.7.9)(bufferutil@4.0.9)(react@19.0.0)(sswr@2.1.0(svelte@5.19.7))(svelte@5.19.7)(utf-8-validate@5.0.10)(vue@3.5.13)(whatwg-url@7.1.0)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@elizaos/core':
         specifier: 0.1.7
         version: 0.1.7(@google-cloud/vertexai@1.9.3)(@langchain/core@0.3.37(openai@4.73.0(zod@3.23.8)))(axios@1.7.9)(react@19.0.0)(sswr@2.1.0(svelte@5.19.7))(svelte@5.19.7)(vue@3.5.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -232,11 +229,6 @@ packages:
 
   '@cfworker/json-schema@4.1.1':
     resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
-
-  '@elizaos/client-twitter@0.1.7':
-    resolution: {integrity: sha512-Kc38ZwWRhloBY8SpYgGENlXWssy/BS6oj8FD+r+dbIAxOwFC65sv02yB9fshvQn2KsXgms+wXq/L/hwbw5oGyA==}
-    peerDependencies:
-      whatwg-url: 7.1.0
 
   '@elizaos/core@0.1.7':
     resolution: {integrity: sha512-oorLGxE0LAdboNFhf62erTxu0+woNHZn98at/X3caDX34Fxr+d1cRQ6/W34WPAOIlv1tg3Q0ZArcpCCOaDTcMw==}
@@ -2576,39 +2568,6 @@ snapshots:
   '@bcoe/v8-coverage@0.2.3': {}
 
   '@cfworker/json-schema@4.1.1': {}
-
-  '@elizaos/client-twitter@0.1.7(@google-cloud/vertexai@1.9.3)(@langchain/core@0.3.37(openai@4.73.0(zod@3.23.8)))(axios@1.7.9)(bufferutil@4.0.9)(react@19.0.0)(sswr@2.1.0(svelte@5.19.7))(svelte@5.19.7)(utf-8-validate@5.0.10)(vue@3.5.13)(whatwg-url@7.1.0)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@elizaos/core': 0.1.7(@google-cloud/vertexai@1.9.3)(@langchain/core@0.3.37(openai@4.73.0(zod@3.23.8)))(axios@1.7.9)(react@19.0.0)(sswr@2.1.0(svelte@5.19.7))(svelte@5.19.7)(vue@3.5.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      agent-twitter-client: 0.0.18(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      glob: 11.0.0
-      whatwg-url: 7.1.0
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - '@google-cloud/vertexai'
-      - '@langchain/anthropic'
-      - '@langchain/aws'
-      - '@langchain/cohere'
-      - '@langchain/core'
-      - '@langchain/google-genai'
-      - '@langchain/google-vertexai'
-      - '@langchain/groq'
-      - '@langchain/mistralai'
-      - '@langchain/ollama'
-      - axios
-      - bufferutil
-      - cheerio
-      - encoding
-      - peggy
-      - react
-      - solid-js
-      - sswr
-      - supports-color
-      - svelte
-      - typeorm
-      - utf-8-validate
-      - vue
-      - ws
 
   '@elizaos/core@0.1.7(@google-cloud/vertexai@1.9.3)(@langchain/core@0.3.37(openai@4.73.0(zod@3.23.8)))(axios@1.7.9)(react@19.0.0)(sswr@2.1.0(svelte@5.19.7))(svelte@5.19.7)(vue@3.5.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
