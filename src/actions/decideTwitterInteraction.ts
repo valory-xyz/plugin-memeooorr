@@ -1,39 +1,56 @@
-import {
+import { elizaLogger, generateObject, ModelClass } from "@elizaos/core";
+import type {
+  State,
+  HandlerCallback,
   Action,
-  elizaLogger,
-  generateText,
-  ModelClass,
-  parseJSONObjectFromText,
+  IAgentRuntime,
+  Memory,
+  Provider,
 } from "@elizaos/core";
+import type { TwitterInteractionResponse } from "../providers/twitterProvider";
+import { TwitterInteractionSchema } from "../types/content";
 
-export const decideTwitterInteractionAction: Action = {
-  name: "DECIDE_TWITTER_INTERACTION",
-  description:
-    "Decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.",
-  similes: ["DECIDE_INTERACTION", "TWITTER_ACTION", "SOCIAL_DECISION"],
-  examples: [
-    [
-      {
-        text: "Analyze tweets and decide what actions to take for persona 'TechGuru'.",
-      },
-    ],
-  ],
-  validate: async (runtime, message) => {
-    return !!message?.content?.persona;
-  },
-  handler: async (runtime, message, state, params, callback) => {
-    try {
-      const { persona, previousTweets, otherTweets, time } = message.content;
+/**
+ * Action to decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.
+ * @param tweetProvider The provider to fetch tweets and persona information.
+ * @returns The action to decide on Twitter interactions.
+ */
+export const decideTwitterInteractionAction = (
+  tweetProvider: Provider,
+  twitterProvider: Provider,
+): Action => {
+  return {
+    name: "DECIDE_TWITTER_INTERACTION",
+    description:
+      "Decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.",
+    similes: ["DECIDE_INTERACTION", "TWITTER_ACTION", "SOCIAL_DECISION"],
+    examples: [],
+    validate: async (_runtime: IAgentRuntime, message: Memory) => {
+      // Check if the response message is in the correct format
+      return true;
+    },
+    handler: async (
+      runtime: IAgentRuntime,
+      message: Memory,
+      state: State | undefined,
+      options,
+      callback,
+    ) => {
+      try {
+        let currentState: State;
+        if (!state) {
+          currentState = (await runtime.composeState(message)) as State;
+        } else {
+          currentState = await runtime.updateRecentMessageState(state);
+        }
 
-      // Ensure all required parameters are present
-      if (!persona || !time || !previousTweets || !otherTweets) {
-        throw new Error(
-          "Missing required parameters: persona, previousTweets, otherTweets, or time.",
+        const metadata: TwitterInteractionResponse = await tweetProvider.get(
+          runtime,
+          message,
         );
-      }
 
-      // Construct the decision-making prompt
-      const prompt = `
+        // Construct the decision-making prompt
+        const prompt = `
         You are a user on Twitter with a specific persona. You create tweets and also analyze tweets from other users and decide whether to interact with them or not.
         You need to decide whether to create your own tweet or to interact with other users. The available actions are:
 
@@ -45,19 +62,19 @@ export const decideTwitterInteractionAction: Action = {
         - Follow
 
         Here's your persona:
-        "${persona}"
+        "${metadata.persona}"
 
         Here are some of your previous tweets:
-        ${previousTweets}
+        ${metadata.prevTweets}
 
         Here are some tweets from other users:
-        ${otherTweets}
+        ${metadata.otherTweets}
 
         Your task is to decide what actions to do, if any. Some recommendations:
         - If you decide to tweet, make sure it is significantly different from previous tweets in both topic and wording.
         - If you decide to reply or quote, make sure it is relevant to the tweet you are replying to.
         - We encourage you to interact with other users to increase your engagement.
-        - Pay attention to the time of creation of your previous tweets. You should not create new tweets too frequently. The time now is ${time}.
+        - Pay attention to the time of creation of your previous tweets. You should not create new tweets too frequently. The time now is ${new Date().toISOString()}.
 
         OUTPUT_FORMAT
         * Your output response must be only a single JSON list to be parsed by Python's "json.loads()".
@@ -67,46 +84,83 @@ export const decideTwitterInteractionAction: Action = {
             - text: a string. If the selected action is tweet, reply or quote, this field must contain the text of the reply or quote. If the action is like, retweet or follow, this field must be empty. Please do not include any hashtags on the tweet. Remember that tweets can't be longer than 280 characters.
       `;
 
-      // Generate the decision using LLM
-      const response = await generateText({
-        runtime,
-        context: prompt,
-        modelClass: ModelClass.Large,
-      });
+        // Generate the decision using LLM
+        const response = await generateObject({
+          runtime,
+          context: prompt,
+          modelClass: ModelClass.LARGE,
+          schema: TwitterInteractionSchema,
+        });
 
-      if (!response) {
-        throw new Error("No decision generated.");
+        const actions = [
+          "tweet",
+          "like",
+          "retweet",
+          "reply",
+          "quote",
+          "follow",
+        ];
 
-      // Parse the response as JSON
-      const decisions = parseJSONObjectFromText(response);
+        const supportedActions: ((typeof actions)[number] | null)[] = [
+          ...actions,
+          null,
+        ];
 
-      if (!decisions || !Array.isArray(decisions)) {
-        throw new Error("Failed to parse the LLM response.");
+        // Parse the response as JSON
+        const decisions = response.object as {
+          action: (typeof supportedActions)[number];
+          tweet_id: string;
+          text: string;
+        };
+
+        if (!decisions) {
+          throw new Error("Failed to parse the LLM response.");
+        }
+
+        elizaLogger.log(`Twitter interaction decisions:`, decisions);
+        let finalAction: string | null = decisions.action;
+        if (!finalAction) {
+          finalAction = "none";
+        }
+
+        const tweetActionMemory: Memory = {
+          id: message.id,
+          content: {
+            text: decisions.text,
+            action: finalAction,
+            source: decisions.tweet_id,
+          },
+          roomId: message.roomId,
+          userId: message.userId,
+          agentId: runtime.agentId,
+        };
+
+        await runtime.messageManager.createMemory(tweetActionMemory);
+
+        twitterProvider.get(runtime, tweetActionMemory);
+
+        callback?.(
+          {
+            text: JSON.stringify(decisions, null, 2),
+            type: "success",
+          },
+          [],
+        );
+
+        return true;
+      } catch (error) {
+        elizaLogger.error(
+          `Error deciding Twitter interactions: ${error.message}`,
+        );
+        callback?.(
+          {
+            text: `Failed to decide interactions: ${error.message}`,
+            type: "error",
+          },
+          [],
+        );
+        return false;
       }
-
-      elizaLogger.log(`Twitter interaction decisions:`, decisions);
-
-      callback?.(
-        {
-          text: JSON.stringify(decisions, null, 2),
-          type: "success",
-        },
-        [],
-      );
-
-      return true;
-    } catch (error) {
-      elizaLogger.error(
-        `Error deciding Twitter interactions: ${error.message}`,
-      );
-      callback?.(
-        {
-          text: `Failed to decide interactions: ${error.message}`,
-          type: "error",
-        },
-        [],
-      );
-      return false;
-    }
-  },
+    },
+  };
 };
