@@ -16,4 +16,7 @@ export interface MemeCoin {
   unleashTime: number;
   tokenNonce: number;
 }
-});
+
+export interface TokensQuery {
+  query: string;
+}
