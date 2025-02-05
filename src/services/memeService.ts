@@ -41,8 +41,8 @@ export interface TokenAction {
 
 export class TokenService {
   private safeAccount: SmartAccountClient;
-  private baseClient: Client;
-  private celoClient: Client;
+  private baseClient: any;
+  private celoClient: any;
   private config: z.infer<typeof TokenConfigSchema>;
 
   // Add public getter for config
