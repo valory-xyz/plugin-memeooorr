@@ -9,18 +9,25 @@ import {
   parseJSONObjectFromText,
 } from "@elizaos/core";
 
+import { type Chain, type Client, type Transport } from "viem";
+
+import { Address, Hex, encodeFunctionData } from "viem";
 import { TokenInteractionSchema } from "../types/content";
-import { createPublicClient, http } from "viem";
-import { base, celo } from "viem/chains";
-import { toSafeSmartAccount } from "permissionless/accounts";
-import { privateKeyToAccount } from "viem/accounts";
 import { memeFactoryAbi } from "../abi/memefactory";
-import { createSmartAccountClient } from "permissionless";
-import { TokenService } from "../services/memeService";
+import { SmartAccountClient } from "permissionless";
+import { SmartAccount } from "viem/account-abstraction";
+
+type MemeSafeClient = SmartAccountClient<
+  Transport,
+  Chain,
+  SmartAccount,
+  Client,
+  undefined
+>;
 
 export const decideTokenAction = (
   tokenProvider: Provider,
-  actionService: TokenService,
+  walletProvider: Provider,
 ): Action => {
   return {
     name: "DECIDE_TOKEN_ACTION",
@@ -140,17 +147,99 @@ export const decideTokenAction = (
 
         const decision = content.object as {
           action: (typeof supportedActions)[number];
-          token_address: string;
-          token_nonce: bigint;
-          token_name: string | null;
-          token_ticker: string | null;
-          token_supply: bigint | null;
+          tokenAddress: string;
+          tokenNonce: bigint;
+          tokenName: string | null;
+          tokenTicker: string | null;
+          tokenSupply: bigint | null;
           amount: string;
           tweet: string;
           new_persona: string | null;
         };
 
-        actionService.executeTokenAction(decision);
+        const tokenDecisionMemory: Memory = {
+          id: message.id,
+          content: {
+            text: JSON.stringify(decision),
+            action: decision.action,
+          },
+          roomId: message.roomId,
+          userId: message.userId,
+          agentId: runtime.agentId,
+        };
+
+        await runtime.messageManager.createMemory(tokenDecisionMemory);
+
+        const safeAccountClient: MemeSafeClient = walletProvider.get(
+          runtime,
+          tokenDecisionMemory,
+        );
+        let data: Hex | undefined = undefined;
+
+        if (decision.action === "summon") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "summonThisMeme",
+            args: [
+              decision.tokenName,
+              decision.tokenTicker,
+              decision.tokenSupply,
+            ],
+          });
+        } else if (decision.action === "heart") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "heartThisMeme",
+            args: [decision.tokenNonce],
+          });
+        } else if (decision.action === "unleash") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "unleashThisMeme",
+            args: [decision.tokenNonce],
+          });
+        } else if (decision.action === "collect") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "collectThisMeme",
+            args: [decision.tokenAddress],
+          });
+        } else if (decision.action === "purge") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "purgeThisMeme",
+            args: [decision.tokenAddress],
+          });
+        } else if (decision.action === "burn") {
+          data = encodeFunctionData({
+            abi: memeFactoryAbi,
+            functionName: "scheduleForAscendance",
+            args: [],
+          });
+        } else {
+          elizaLogger.error("Invalid token action decision:", decision);
+          throw new Error("Invalid token action decision");
+        }
+
+        // Perform the action
+        const hash = await safeAccountClient.sendTransaction({
+          to: runtime.getSetting("MEME_FACTORY_ADDRESS") as Address,
+          data: data as Hex,
+          value: 0n,
+        });
+
+        const transactionMemory: Memory = {
+          id: message.id,
+          content: {
+            text: hash,
+            action: decision.action,
+          },
+          roomId: message.roomId,
+          userId: message.userId,
+          agentId: runtime.agentId,
+        };
+
+        await runtime.messageManager.createMemory(transactionMemory);
 
         // Execute the callback to communicate the result
         if (callback) {
