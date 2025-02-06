@@ -3,8 +3,9 @@ import {
   createWalletClient,
   formatUnits,
   http,
+  encodeFunctionData,
+  Hex,
 } from "viem";
-import { memeFactoryAbi } from "../abi/memefactory";
 import { privateKeyToAccount } from "viem/accounts";
 import type { IAgentRuntime, Provider, Memory, State } from "@elizaos/core";
 import type {
@@ -15,12 +16,27 @@ import type {
   HttpTransport,
   Account,
   PrivateKeyAccount,
+  Client,
 } from "viem";
 import * as viemChains from "viem/chains";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { SmartAccountClient, createSmartAccountClient } from "permissionless";
+import { SmartAccount } from "viem/account-abstraction";
+import { memeFactoryAbi } from "../abi/memefactory";
 
 import type { SupportedChain } from "../types";
+
+type Decision = {
+  action: "summon" | "heart" | "unleash" | "collect" | "purge" | "burn";
+  tokenAddress: Address;
+  tokenNonce: bigint;
+  tokenName: string | null;
+  tokenTicker: string | null;
+  tokenSupply: bigint | null;
+  amount: string;
+  tweet: string;
+  new_persona: string | null;
+};
 
 export class WalletProvider {
   private currentChain: SupportedChain = "base";
@@ -80,13 +96,15 @@ export class WalletProvider {
     return walletClient;
   }
 
-  async getsafeAccountClient(): Promise<SmartAccountClient> {
+  async getsafeAccountClient(): Promise<{
+    safeAccount: SmartAccount;
+    smartSafeAccountClient: SmartAccountClient;
+  }> {
     const transport = this.createHttpTransport("base");
     const publicClient = createPublicClient({
-      cacheTime: 10_000,
       chain: viemChains.base,
       transport,
-    });
+    }) as Client;
 
     const safeAccount = await toSafeSmartAccount({
       client: publicClient,
@@ -96,13 +114,13 @@ export class WalletProvider {
       safeProxyFactoryAddress: this.PROXY_FACTORY,
     });
 
-    const smartSafeAccount = createSmartAccountClient({
+    const smartSafeAccountClient = createSmartAccountClient({
       account: safeAccount,
       chain: viemChains.base,
       bundlerTransport: http(this.bundlerUrl),
     });
 
-    return smartSafeAccount;
+    return { safeAccount, smartSafeAccountClient };
   }
 
   getChainConfigs(chainName: SupportedChain): Chain {
@@ -235,17 +253,73 @@ export const initWalletProvider = (runtime: IAgentRuntime) => {
 export const safeWalletProvider: Provider = {
   async get(
     runtime: IAgentRuntime,
-    _message: Memory,
+    message: Memory,
     _state?: State,
-  ): Promise<SmartAccountClient> {
+  ): Promise<Boolean> {
     try {
+      // convert string to json in message.content.text
+      const decision: Decision = JSON.parse(message.content.text);
+
       const walletProvider = initWalletProvider(runtime);
       const address = walletProvider.getAddress();
 
-      const smartAccountClient: SmartAccountClient =
+      const { safeAccount, smartSafeAccountClient } =
         await walletProvider.getsafeAccountClient();
 
-      return smartAccountClient;
+      let data: Hex | undefined = undefined;
+
+      if (decision.action === "summon") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "summonThisMeme",
+          args: [
+            decision.tokenName,
+            decision.tokenTicker,
+            decision.tokenSupply,
+          ],
+        });
+      } else if (decision.action === "heart") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "heartThisMeme",
+          args: [decision.tokenNonce],
+        });
+      } else if (decision.action === "unleash") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "unleashThisMeme",
+          args: [decision.tokenNonce],
+        });
+      } else if (decision.action === "collect") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "collectThisMeme",
+          args: [decision.tokenAddress],
+        });
+      } else if (decision.action === "purge") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "purgeThisMeme",
+          args: [decision.tokenAddress],
+        });
+      } else if (decision.action === "burn") {
+        data = encodeFunctionData({
+          abi: memeFactoryAbi,
+          functionName: "scheduleForAscendance",
+          args: [],
+        });
+      }
+
+      const hash = await smartSafeAccountClient.sendTransaction({
+        account: safeAccount,
+        chain: walletProvider.getCurrentChain(),
+        to: runtime.getSetting("MEME_FACTORY_ADDRESS") as Address,
+        data,
+        value: 0n,
+        kzg: undefined,
+      });
+
+      return true;
     } catch (error) {
       console.error("Error in Arthera wallet provider:", error);
       throw error;

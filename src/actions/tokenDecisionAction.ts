@@ -6,16 +6,15 @@ import {
   IAgentRuntime,
   Memory,
   ModelClass,
-  parseJSONObjectFromText,
 } from "@elizaos/core";
 
 import { type Chain, type Client, type Transport } from "viem";
 
-import { Address, Hex, encodeFunctionData } from "viem";
+import { Address, Hex } from "viem";
 import { TokenInteractionSchema } from "../types/content";
-import { memeFactoryAbi } from "../abi/memefactory";
 import { SmartAccountClient } from "permissionless";
 import { SmartAccount } from "viem/account-abstraction";
+import { safeWalletProvider } from "../providers/wallet";
 
 type MemeSafeClient = SmartAccountClient<
   Transport,
@@ -170,68 +169,12 @@ export const decideTokenAction = (
 
         await runtime.messageManager.createMemory(tokenDecisionMemory);
 
-        const safeAccountClient: MemeSafeClient = walletProvider.get(
-          runtime,
-          tokenDecisionMemory,
-        );
-        let data: Hex | undefined = undefined;
-
-        if (decision.action === "summon") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "summonThisMeme",
-            args: [
-              decision.tokenName,
-              decision.tokenTicker,
-              decision.tokenSupply,
-            ],
-          });
-        } else if (decision.action === "heart") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "heartThisMeme",
-            args: [decision.tokenNonce],
-          });
-        } else if (decision.action === "unleash") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "unleashThisMeme",
-            args: [decision.tokenNonce],
-          });
-        } else if (decision.action === "collect") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "collectThisMeme",
-            args: [decision.tokenAddress],
-          });
-        } else if (decision.action === "purge") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "purgeThisMeme",
-            args: [decision.tokenAddress],
-          });
-        } else if (decision.action === "burn") {
-          data = encodeFunctionData({
-            abi: memeFactoryAbi,
-            functionName: "scheduleForAscendance",
-            args: [],
-          });
-        } else {
-          elizaLogger.error("Invalid token action decision:", decision);
-          throw new Error("Invalid token action decision");
-        }
-
-        // Perform the action
-        const hash = await safeAccountClient.sendTransaction({
-          to: runtime.getSetting("MEME_FACTORY_ADDRESS") as Address,
-          data: data as Hex,
-          value: 0n,
-        });
+        await walletProvider.get(runtime, tokenDecisionMemory);
 
         const transactionMemory: Memory = {
           id: message.id,
           content: {
-            text: hash,
+            text: "transaction",
             action: decision.action,
           },
           roomId: message.roomId,
