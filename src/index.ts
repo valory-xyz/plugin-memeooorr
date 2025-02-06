@@ -3,8 +3,7 @@ import { tweetProvider, twitterProvider } from "./providers/twitterProvider";
 import { tokenProvider } from "./providers/tokenProvider";
 import { decideTokenAction } from "./actions/tokenDecisionAction";
 import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction";
-
-import { TokenService } from "./services/memeService";
+import { safeWalletProvider } from "./providers/wallet";
 
 export * as actions from "./actions";
 export * as providers from "./providers";
@@ -30,21 +29,35 @@ export * as types from "./types";
 //   batchSize: 20, // Batch size for collection requests
 // };
 
-function createMemeoorPlugin(): Plugin {
-  // Initialize reusable CacheManager if caching is enabled
-  const memeService = new TokenService();
-  memeService.createSafe();
+// function createMemeoorPlugin(): Plugin {
+//   // Initialize reusable CacheManager if caching is enabled
 
-  return {
-    name: "memeooorr",
-    description: "Provides NFT collection information and market intelligence",
-    providers: [tweetProvider, tokenProvider],
-    actions: [
-      decideTwitterInteractionAction(tweetProvider, twitterProvider),
-      decideTokenAction(tokenProvider, memeService),
-    ],
-    evaluators: [],
-  };
-}
+//   return {
+//     name: "memeooorr",
+//     description: "Provides NFT collection information and market intelligence",
+//     providers: [
+//       tweetProvider,
+//       tokenProvider,
+//       tokenProvider,
+//       safeWalletProvider,
+//     ],
+//     actions: [
+//       decideTwitterInteractionAction(tweetProvider, twitterProvider),
+//       decideTokenAction(tokenProvider, safeWalletProvider),
+//     ],
+//     evaluators: [],
+//   };
+// }
+//
+export const memeoorPlugin: Plugin = {
+  name: "memeooorr",
+  description: "Provides NFT collection information and market intelligence",
+  providers: [tweetProvider, tokenProvider, tokenProvider, safeWalletProvider],
+  actions: [
+    decideTwitterInteractionAction(tweetProvider, twitterProvider),
+    decideTokenAction(tokenProvider, safeWalletProvider),
+  ],
+  evaluators: [],
+};
 
-export default createMemeoorPlugin;
+export default memeoorPlugin;
