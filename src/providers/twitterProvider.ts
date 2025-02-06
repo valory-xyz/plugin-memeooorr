@@ -122,19 +122,6 @@ const twitterProvider: Provider = {
       elizaLogger.info("Invalid action");
       return false;
     }
-
-    try {
-      const result: TwitterInteractionResponse = {
-        persona: persona,
-        prevTweets: previousTweets,
-        otherTweets: otherTweets,
-      };
-      elizaLogger.debug("Tweet retrieved successfully");
-      return result;
-    } catch (error) {
-      elizaLogger.error("Failed to fetch tweet:", error);
-      return false;
-    }
   },
 };
 

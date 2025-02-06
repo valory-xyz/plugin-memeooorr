@@ -77,44 +77,44 @@ export class TwitterScraper {
     return subgraphUrl;
   }
 
-  public async likeTweet(tweet: Tweet) {
-    if (!tweet.id) {
+  public async likeTweet(id: string) {
+    if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
     }
-    return await this.scraper.likeTweet(tweet.id);
+    return await this.scraper.likeTweet(id);
   }
 
-  public async retweet(tweet: Tweet) {
-    if (!tweet.id) {
+  public async retweet(id: string) {
+    if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
     }
-    return await this.scraper.retweet(tweet.id);
+    return await this.scraper.retweet(id);
   }
 
   public async sendUserTweet(message: string) {
     return await this.scraper.sendTweet(message);
   }
 
-  public async replyToTweet(tweet: Tweet, message: string) {
-    if (!tweet.id) {
+  public async replyToTweet(id: string, message: string) {
+    if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
     }
-    return await this.scraper.sendQuoteTweet(message, tweet.id);
+    return await this.scraper.sendQuoteTweet(message, id);
   }
 
   public async followUser(userId: string) {
     return await this.scraper.followUser(userId);
   }
 
-  public async quoteTweet(tweet: Tweet, message: string) {
-    if (!tweet.id) {
+  public async quoteTweet(id: string, message: string) {
+    if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
     }
-    return await this.scraper.sendTweet(message, tweet.id);
+    return await this.scraper.sendTweet(message, id);
   }
 
   public async getUserLatestTweet() {
