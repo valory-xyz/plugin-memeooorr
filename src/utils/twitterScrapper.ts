@@ -1,15 +1,18 @@
 import { Scraper, Tweet, SearchMode } from "agent-twitter-client";
-import { elizaLogger } from "@elizaos/core";
-import { PackageQueryVariables, PackageQuery } from "../types/subgraph";
-import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants";
-import { MemeCoin, TokensQuery } from "../types/chains";
+import { elizaLogger, IAgentRuntime } from "@elizaos/core";
+import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants.ts";
+import { MemeCoin, TokensQuery } from "../types/chains.ts";
 
 import fs from "fs";
+
+const __cookiesFilePath = "./cookies.json";
 
 export class TwitterScraper {
   private scraper: Scraper;
 
-  constructor() {}
+  constructor(sc: Scraper) {
+    this.scraper = sc;
+  }
 
   public getScraper(): Scraper {
     return this.scraper;
@@ -19,46 +22,15 @@ export class TwitterScraper {
     return await this.scraper.getUserIdByScreenName(screenName);
   }
 
-  public async login() {
+  public async saveCookies() {
     const cookiesFilePath = "./cookies.json";
-    const username = process.env.TWITTER_USERNAME;
-    const password = process.env.TWITTER_PASSWORD;
-    const email = process.env.TWITTER_EMAIL;
-    const twitter2faSecret = process.env.TWITTER_2FA_SECRET;
 
-    if (fs.existsSync(cookiesFilePath)) {
+    if (!fs.existsSync(cookiesFilePath)) {
       // Load cookies from file
-      const cookies = JSON.parse(fs.readFileSync(cookiesFilePath, "utf-8"));
-      this.scraper = new Scraper();
+      const cookies = await this.scraper.getCookies();
+      fs.writeFileSync(cookiesFilePath, JSON.stringify(cookies, null, 2));
 
-      await this.scraper.setCookies(cookies);
-      elizaLogger.info("Loaded cookies from file");
-
-      if (await this.scraper.isLoggedIn()) {
-        elizaLogger.info("Logged in using cookies");
-        return true;
-      } else {
-        elizaLogger.warn("Cookies are invalid, logging in with credentials");
-      }
     }
-
-    if (!username || !password) {
-      elizaLogger.error("Twitter credentials not configured in environment");
-      return false;
-    }
-
-    // Login with credentials
-    this.scraper = new Scraper();
-    await this.scraper.login(username, password, email, twitter2faSecret);
-    const cookies = await this.scraper.getCookies();
-    fs.writeFileSync(cookiesFilePath, JSON.stringify(cookies, null, 2));
-
-    if (!(await this.scraper.isLoggedIn())) {
-      elizaLogger.error("Failed to login to Twitter");
-      return false;
-    }
-
-    elizaLogger.info("Logged in with credentials and saved cookies");
     return true;
   }
 
@@ -117,8 +89,7 @@ export class TwitterScraper {
     return await this.scraper.sendTweet(message, id);
   }
 
-  public async getUserLatestTweet() {
-    const username = process.env.TWITTER_USERNAME;
+  public async getUserLatestTweet(username: string) {
     if (!username) {
       elizaLogger.error("Twitter username not configured in environment");
       throw new Error("Twitter username not configured in environment");
@@ -174,31 +145,27 @@ export class TwitterScraper {
     return prev;
   }
 
-  async getUsersFromSubgraph() {
-    const username = process.env.TWITTER_USERNAME;
+  async getUsersFromSubgraph(url: string, username: string) {
     let handles: string[] = [];
 
     const MEMEOOORR_DESCRIPTION_PATTERN = /^Memeooorr @(\w+)$/;
 
-    const url = this.getSubgraphUrl();
-
     const data = {
       query: PACKAGE_QUERY,
       variables: {
-        package_type: "package",
+        package_type: "service",
       },
     };
 
     // dump data to json and encode it
     const dataJson = JSON.stringify(data);
-    const dataEncoded = encodeURIComponent(dataJson);
 
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: dataEncoded,
+      body: dataJson,
     });
 
     if (!response.ok) {
@@ -206,7 +173,6 @@ export class TwitterScraper {
         status: response.status,
         error: await response.text(),
       });
-      return [];
     }
 
     const responseData = await response.json();
@@ -217,31 +183,37 @@ export class TwitterScraper {
       const match = description.match(MEMEOOORR_DESCRIPTION_PATTERN);
       if (match) {
         const screenName = match[1];
-        const userId = await this.getUserIdByScreenName(screenName);
-        if (userId && userId !== username) {
-          handles.push(userId);
+        if (screenName && screenName !== username) {
+          handles.push(screenName);
         }
       }
+    }
+
+    if (handles.length === 0) {
+      elizaLogger.error("No users found in subgraph or the query is invalid");
+      return null;
     }
 
     return handles;
   }
 
-  public async getOtherUserTweets() {
+  public async getOtherUserTweets(_runtime: IAgentRuntime,handles: string[]) {
     // query runtime Db for all messages with type as Interaction
     let tweets: Tweet[] = [];
-    const handles = await this.getUsersFromSubgraph();
-
-    if (handles.length === 0) {
-      elizaLogger.error("No users found in subgraph");
-      return "";
-    }
 
     for (const handle of handles) {
-      const tweet = await this.scraper.getLatestTweet(handle);
-      if (tweet) {
-        tweets.push(tweet);
+      try {
+        const tweet = await this.scraper.getLatestTweet(handle);
+        if (tweet) {
+          tweets.push(tweet);
+        }
+      } catch(error) {
+        elizaLogger.error("Failed to fetch tweet for handle:", handle);
       }
+    }
+
+    if (tweets.length === 0) {
+      elizaLogger.error("No tweets found for any of the handles");
     }
 
     // Parse the tweets using the provided logic
@@ -328,4 +300,56 @@ export class TwitterScraper {
       throw new Error("Failed to get tokens from subgraph");
     }
   }
+}
+
+function readCookies() {
+  if (fs.existsSync(__cookiesFilePath)) {
+    const cookies = JSON.parse(fs.readFileSync(__cookiesFilePath, "utf8"));
+    const cookieStrings = cookies?.map(
+        (cookie: any) =>
+          `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${
+            cookie.path
+          }; ${cookie.secure ? 'Secure' : ''}; ${
+            cookie.httpOnly ? 'HttpOnly' : ''
+          }; SameSite=${cookie.sameSite || 'Lax'}`,
+      );
+    return cookieStrings;
+  }
+  return null;
+}
+
+export async function getScrapper(runtime: IAgentRuntime):Promise<Scraper | null> {
+  const username = runtime.getSetting("TWITTER_USERNAME")
+  const password = runtime.getSetting("TWITTER_PASSWORD")
+  const email = runtime.getSetting("TWITTER_EMAIL")
+
+  elizaLogger.info("Attempting Twitter login with username:", username, password, email);
+
+  const ts = new Scraper();
+
+
+  try {
+    const cookieStrings = readCookies();
+    if (cookieStrings) {
+      elizaLogger.info("Attempting Twitter login using cookies");
+      await ts.setCookies(cookieStrings);
+      if (await ts.isLoggedIn()) {
+        elizaLogger.info("Twitter login successful using cookies");
+        return ts;
+      }
+    }
+    elizaLogger.info("Twitter login successful using cookies");
+  } catch (error) {
+    elizaLogger.warn("Failed to set cookies, Performing Normal Login:", error);
+    await ts.login(username, password, email);
+    const cookies = await ts.getCookies();
+    fs.writeFileSync(__cookiesFilePath, JSON.stringify(cookies, null, 2));
+    if (await ts.isLoggedIn()) {
+      elizaLogger.warn("Twitter login successful but without cookies");
+      return ts;
+    }
+  }
+
+  return null;
+
 }

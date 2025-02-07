@@ -1,13 +1,13 @@
 import type { Plugin } from "@elizaos/core";
-import { tweetProvider, twitterProvider } from "./providers/twitterProvider";
-import { tokenProvider } from "./providers/tokenProvider";
-import { decideTokenAction } from "./actions/tokenDecisionAction";
-import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction";
-import { safeWalletProvider } from "./providers/wallet";
+import { tweetProvider, twitterProvider } from "./providers/twitterProvider.ts";
+import { tokenProvider } from "./providers/tokenProvider.ts";
+import { decideTokenAction } from "./actions/tokenDecisionAction.ts";
+import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction.ts";
+import { safeWalletProvider } from "./providers/wallet.ts";
 
-export * as actions from "./actions";
-export * as providers from "./providers";
-export * as types from "./types";
+export * as actions from "./actions/index.ts";
+export * as providers from "./providers/index.ts";
+export * as types from "./types/index.ts";
 
 // // Consider exposing these settings as environment variables to allow users to provide custom configuration values.
 // const config = {
@@ -51,7 +51,8 @@ export * as types from "./types";
 export const memeoorPlugin: Plugin = {
   name: "memeooorr",
   description: "Provides NFT collection information and market intelligence",
-  providers: [tweetProvider, tokenProvider, tokenProvider, safeWalletProvider],
+  // providers: [tweetProvider, twitterProvider, tokenProvider, safeWalletProvider],
+  providers: [],
   actions: [
     decideTwitterInteractionAction(tweetProvider, twitterProvider),
     decideTokenAction(tokenProvider, safeWalletProvider),

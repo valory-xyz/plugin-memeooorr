@@ -7,8 +7,9 @@ import type {
   Memory,
   Provider,
 } from "@elizaos/core";
-import type { TwitterInteractionResponse } from "../providers/twitterProvider";
-import { TwitterInteractionSchema } from "../types/content";
+import type { TwitterInteractionResponse } from "../providers/twitterProvider.ts";
+import { TwitterInteractionSchema } from "../types/content.ts";
+import { mev } from "viem/chains";
 
 /**
  * Action to decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.
@@ -44,10 +45,16 @@ export const decideTwitterInteractionAction = (
           currentState = await runtime.updateRecentMessageState(state);
         }
 
-        const metadata: TwitterInteractionResponse = await tweetProvider.get(
+        elizaLogger.log("Fetching Twitter metadata");
+
+        const metadata: TwitterInteractionResponse | false = await tweetProvider.get(
           runtime,
           message,
         );
+
+        if (!metadata) {
+          return false;
+        }
 
         // Construct the decision-making prompt
         const prompt = `
@@ -84,12 +91,17 @@ export const decideTwitterInteractionAction = (
             - text: a string. If the selected action is tweet, reply or quote, this field must contain the text of the reply or quote. If the action is like, retweet or follow, this field must be empty. Please do not include any hashtags on the tweet. Remember that tweets can't be longer than 280 characters.
       `;
 
+        elizaLogger.log("Generating Response");
+
         // Generate the decision using LLM
         const response = await generateObject({
           runtime,
           context: prompt,
           modelClass: ModelClass.LARGE,
           schema: TwitterInteractionSchema,
+          schemaName: "TwitterInteractionSchema",
+          schemaDescription: "Schema for Twitter interaction decisions, including actions and tweet IDs.",
+          mode: "json",
         });
 
         const actions = [

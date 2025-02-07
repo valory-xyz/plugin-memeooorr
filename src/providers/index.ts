@@ -1,2 +1,2 @@
-export * from "./tokenProvider";
-export * from "./twitterProvider";
+export * from "./tokenProvider.ts";
+export * from "./twitterProvider.ts";

@@ -22,9 +22,9 @@ import * as viemChains from "viem/chains";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 import { SmartAccount } from "viem/account-abstraction";
-import { memeFactoryAbi } from "../abi/memefactory";
+import { memeFactoryAbi } from "../abi/memefactory.ts";
 
-import type { SupportedChain } from "../types";
+import type { SupportedChain } from "../types/chains.ts";
 
 type Decision = {
   action: "summon" | "heart" | "unleash" | "collect" | "purge" | "burn";
@@ -257,6 +257,15 @@ export const safeWalletProvider: Provider = {
     _state?: State,
   ): Promise<Boolean> {
     try {
+      if (message.content.text=="transaction") {
+        try{
+          JSON.parse(message.content.text);
+        } catch(e) {
+          return false;
+        }
+      } else {
+        return false;
+      }
       // convert string to json in message.content.text
       const decision: Decision = JSON.parse(message.content.text);
 

@@ -11,18 +11,9 @@ import {
 import { type Chain, type Client, type Transport } from "viem";
 
 import { Address, Hex } from "viem";
-import { TokenInteractionSchema } from "../types/content";
+import { TokenInteractionSchema } from "../types/content.ts";
 import { SmartAccountClient } from "permissionless";
 import { SmartAccount } from "viem/account-abstraction";
-import { safeWalletProvider } from "../providers/wallet";
-
-type MemeSafeClient = SmartAccountClient<
-  Transport,
-  Chain,
-  SmartAccount,
-  Client,
-  undefined
->;
 
 export const decideTokenAction = (
   tokenProvider: Provider,
@@ -47,6 +38,12 @@ export const decideTokenAction = (
       params,
       callback,
     ) => {
+
+      if (message.content.action !== "TOKEN_ACTION") {
+        elizaLogger.error("No runtime provided");
+        return false;
+      }
+
       try {
         if (!state) {
           state = await runtime.composeState(message);
@@ -155,6 +152,7 @@ export const decideTokenAction = (
           tweet: string;
           new_persona: string | null;
         };
+        elizaLogger.log("Token decision:", decision);
 
         const tokenDecisionMemory: Memory = {
           id: message.id,

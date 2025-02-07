@@ -1,3 +1,3 @@
-export * from "./chains";
-export * from "./content";
-export * from "./subgraph";
+export * from "./chains.ts";
+export * from "./content.ts";
+export * from "./subgraph.ts";
