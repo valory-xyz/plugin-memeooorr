@@ -337,6 +337,8 @@ export async function getScrapper(runtime: IAgentRuntime):Promise<Scraper | null
         elizaLogger.info("Twitter login successful using cookies");
         return ts;
       }
+    } else {
+      throw new Error("No cookies found");
     }
     elizaLogger.info("Twitter login successful using cookies");
   } catch (error) {
