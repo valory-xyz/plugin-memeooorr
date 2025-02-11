@@ -232,16 +232,8 @@ export class TwitterScraper {
    * @param runtime Agent runtime environment
    * @returns Owner account
    */
-  public async getTokens() {
+  public async getTokens(url: string) {
     elizaLogger.info("Getting tokens from Olas subgraph...");
-    const memeSubgraphUrl = process.env.MEME_SUBGRAPH_URL;
-    if (!memeSubgraphUrl) {
-      throw new Error("No meme subgraph url configured");
-    }
-
-    const headers = {
-      "Content-Type": "application/json",
-    };
 
     const data: TokensQuery = {
       query: TOKENS_QUERY,
@@ -249,16 +241,15 @@ export class TwitterScraper {
 
     // dump data to json and encode it
     const dataJson = JSON.stringify(data);
-    const dataEncoded = encodeURIComponent(dataJson);
 
     try {
       elizaLogger.info("Getting tokens from subgraph");
-      const response = await fetch(memeSubgraphUrl, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: dataEncoded,
+        body: dataJson,
       });
 
       if (!response.ok) {
@@ -272,15 +263,15 @@ export class TwitterScraper {
       const items = responseData.data.memeTokens.items;
 
       const filteredItems = items.filter(
-        (t: any) => t.chain === 8143 && parseInt(t.memeNonce) > 0,
+        (t: any) => t.chain === "base" && parseInt(t.memeNonce) > 0,
       );
 
       const memeCoins: MemeCoin[] = filteredItems.map((item: any) => ({
-        tokenName: item.tokenName,
-        tokenTicker: item.tokenTicker,
+        tokenName: item.name,
+        tokenTicker: item.symbol,
         blockNumber: item.blockNumber,
         chain: item.chain,
-        tokenAddress: item.tokenAddress,
+        tokenAddress: item.memeToken,
         liquidity: item.liquidity,
         heartCount: item.heartCount,
         isUnleashed: item.isUnleashed,
@@ -288,10 +279,9 @@ export class TwitterScraper {
         lpPairAddress: item.lpPairAddress,
         owner: item.owner,
         timestamp: item.timestamp,
-        memeOnce: item.memeOnce,
+        memeNonce: item.memeNonce,
         summonTime: item.summonTime,
         unleashTime: item.unleashTime,
-        tokenNonce: item.tokenNonce,
       }));
 
       return memeCoins;
@@ -319,9 +309,9 @@ function readCookies() {
 }
 
 export async function getScrapper(runtime: IAgentRuntime):Promise<Scraper | null> {
-  const username = runtime.getSetting("TWITTER_USERNAME")
-  const password = runtime.getSetting("TWITTER_PASSWORD")
-  const email = runtime.getSetting("TWITTER_EMAIL")
+  const username = runtime.getSetting("TWITTER_USERNAME") as string;
+  const password = runtime.getSetting("TWITTER_PASSWORD") as string;
+  const email = runtime.getSetting("TWITTER_EMAIL") as string;
 
   elizaLogger.info("Attempting Twitter login with username:", username, password, email);
 

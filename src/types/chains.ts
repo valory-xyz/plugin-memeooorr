@@ -78,17 +78,16 @@ export interface MemeCoin {
   blockNumber: number;
   chain: string;
   tokenAddress: string;
-  liquidity: number;
-  heartCount: number;
+  liquidity: string;
+  heartCount: string;
   isUnleashed: boolean;
   isPurged: boolean;
   lpPairAddress: string;
   owner: string;
   timestamp: number;
-  memeOnce: number;
+  memeNonce: string;
   summonTime: number;
   unleashTime: number;
-  tokenNonce: number;
 }
 
 export interface TokensQuery {

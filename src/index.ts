@@ -3,7 +3,8 @@ import { tweetProvider, twitterProvider } from "./providers/twitterProvider.ts";
 import { tokenProvider } from "./providers/tokenProvider.ts";
 import { decideTokenAction } from "./actions/tokenDecisionAction.ts";
 import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction.ts";
-import { safeWalletProvider } from "./providers/wallet.ts";
+import { safeAccountProvider } from "./providers/safeaccount.ts";
+import { DirectClient } from "@elizaos/client-direct";
 
 export * as actions from "./actions/index.ts";
 export * as providers from "./providers/index.ts";
@@ -55,7 +56,7 @@ export const memeoorPlugin: Plugin = {
   providers: [],
   actions: [
     decideTwitterInteractionAction(tweetProvider, twitterProvider),
-    decideTokenAction(tokenProvider, safeWalletProvider),
+    decideTokenAction(tokenProvider, safeAccountProvider),
   ],
   evaluators: [],
 };

@@ -22,7 +22,7 @@ export interface TokenInteractionResultContent extends Content {
   tokenTicker: string;
   tokenNonce: bigint | undefined;
   tokenSupply: bigint | undefined;
-  amount: number;
+  amount: bigint;
   tweet: string;
   newPersona: string | undefined;
 }
@@ -32,9 +32,9 @@ export const TokenInteractionSchema = z.object({
   tokenAddress: z.string(),
   tokenName: z.string().nullable(),
   tokenTicker: z.string().nullable(),
-  tokenNonce: z.string(),
-  tokenSupply: z.number().nullable(),
-  amount: z.number(),
+  tokenNonce: z.bigint(),
+  tokenSupply: z.bigint().nullable(),
+  amount: z.bigint(),
   tweet: z.string(),
   newPersona: z.string().nullable(),
 });

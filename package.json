@@ -2,7 +2,6 @@
   "name": "@elizaos/plugin-memeooorr",
   "version": "0.1.7",
   "main": "dist/index.js",
-  "type": "module",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -23,12 +22,10 @@
     "agent-twitter-client": "^0.0.18",
     "fs": "0.0.1-security",
     "node-cache": "^5.1.2",
-    "permissionless": "0.2.30",
     "tsup": "8.3.5",
-    "viem": "2.21.54",
+    "viem": "2.23.0",
     "ws": "^8.0.0",
-    "zod": "3.23.8",
-    "@safe-global/protocol-kit": "5.2.1"
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",

@@ -8,16 +8,11 @@ import {
   ModelClass,
 } from "@elizaos/core";
 
-import { type Chain, type Client, type Transport } from "viem";
-
-import { Address, Hex } from "viem";
 import { TokenInteractionSchema } from "../types/content.ts";
-import { SmartAccountClient } from "permissionless";
-import { SmartAccount } from "viem/account-abstraction";
 
 export const decideTokenAction = (
   tokenProvider: Provider,
-  walletProvider: Provider,
+  safeAccountProvider: Provider,
 ): Action => {
   return {
     name: "DECIDE_TOKEN_ACTION",
@@ -39,10 +34,10 @@ export const decideTokenAction = (
       callback,
     ) => {
 
-      if (message.content.action !== "TOKEN_ACTION") {
-        elizaLogger.error("No runtime provided");
-        return false;
-      }
+      // if (message.content.action !== "TOKEN_ACTION") {
+      //   elizaLogger.error("No runtime provided");
+      //   return false;
+      // }
 
       try {
         if (!state) {
@@ -61,7 +56,7 @@ export const decideTokenAction = (
 
                 The token life cycle goes like this:
                 1. 🪄 Summon a Meme
-                Any agent (msg.sender) can summon a meme by contributing at least 0.01 ETH / 10 CELO.
+                Any agent (msg.sender) can summon a meme by contributing at least 0.01 ETH.
                 This action creates the meme and starts a 24-hour timer for the next actions.
                 2. ❤️ Heart the Meme (for a minimum of 24 hours after summoning and before unleashing)
                 Any agent can "heart" the meme by contributing a non-zero ETH value.
@@ -104,7 +99,7 @@ export const decideTokenAction = (
 
                 You can use these tweets as feedback in order to update your persona if you think that will improve engagement.
 
-                You have {balance} ETH currently available, so stick to that budget.
+                You have ${metadata.balance} ETH currently available, so stick to that budget.
                 Every now and then you will need to make more decisions using the same budget, so it might be wise not to spend eveything on a single action.
                 Whenever hearting is in the list of available actions, try to heart a token from time to time.
 
@@ -148,17 +143,26 @@ export const decideTokenAction = (
           tokenName: string | null;
           tokenTicker: string | null;
           tokenSupply: bigint | null;
-          amount: string;
+          amount: bigint;
           tweet: string;
           new_persona: string | null;
         };
         elizaLogger.log("Token decision:", decision);
+
+        // check if action is deploy or heart and get the amount
+        // if not deploy or heart, set amount to 0
+        if (decision.action === "deploy" || decision.action === "heart") {
+          decision.amount = BigInt(decision.amount);
+        } else {
+          decision.amount = BigInt(0);
+        }
 
         const tokenDecisionMemory: Memory = {
           id: message.id,
           content: {
             text: JSON.stringify(decision),
             action: decision.action,
+            source: "token_decision",
           },
           roomId: message.roomId,
           userId: message.userId,
@@ -167,12 +171,10 @@ export const decideTokenAction = (
 
         await runtime.messageManager.createMemory(tokenDecisionMemory);
 
-        await walletProvider.get(runtime, tokenDecisionMemory);
-
-        const transactionMemory: Memory = {
+        const exectutionMemory: Memory = {
           id: message.id,
           content: {
-            text: "transaction",
+            text: "Exectuting action decided by the agent",
             action: decision.action,
           },
           roomId: message.roomId,
@@ -180,7 +182,10 @@ export const decideTokenAction = (
           agentId: runtime.agentId,
         };
 
-        await runtime.messageManager.createMemory(transactionMemory);
+
+        await runtime.messageManager.createMemory(exectutionMemory);
+
+        await safeAccountProvider.get(runtime, tokenDecisionMemory);
 
         // Execute the callback to communicate the result
         if (callback) {

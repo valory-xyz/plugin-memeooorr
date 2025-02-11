@@ -23,7 +23,7 @@ const tweetProvider: Provider = {
     if (message.content.action!=ACTIONS.START) {
       return false;
     }
-    const username = runtime.getSetting("TWITTER_USERNAME");
+    const username = runtime.getSetting("TWITTER_USERNAME") as string;
 
     const ts: Scraper | null = await getScrapper(runtime);
     if (!ts) {
@@ -53,10 +53,10 @@ const tweetProvider: Provider = {
     let otherTweets: string = "";
     let handles: string[] = [];
     try {
-      const subUrl = runtime.getSetting("SUBGRAPH_URL");
+      const subUrl = runtime.getSetting("SUBGRAPH_URL") as string;
       elizaLogger.log("Subgraph URL:", subUrl);
       try {
-        handles = await scraper.getUsersFromSubgraph(subUrl, username);
+        handles = await scraper.getUsersFromSubgraph(subUrl, username) as string[];
       } catch (error) {
         elizaLogger.error("Failed to get users from subgraph:", error);
         return false;
@@ -74,7 +74,6 @@ const tweetProvider: Provider = {
       elizaLogger.log("Other Tweets fetched successfully!", otherTweets);
     } catch (error) {
       elizaLogger.error("Failed to fetch other tweets:", error);
-      throw new Error("Failed to fetch other tweets", error);
     }
 
 
@@ -134,27 +133,27 @@ const twitterProvider: Provider = {
       return true;
     } else if (message.content.action === "like") {
       elizaLogger.log("Liking a tweet");
-      await scraper.likeTweet(message.content.source);
+      await scraper.likeTweet(message.content.source as string);
       elizaLogger.success("Tweet liked successfully");
       return true;
     } else if (message.content.action === "retweet") {
       elizaLogger.log("Retweeting a tweet");
-      await scraper.retweet(message.content.source);
+      await scraper.retweet(message.content.source as string);
       elizaLogger.success("Tweet retweeted successfully");
       return true;
     } else if (message.content.action === "reply") {
       elizaLogger.log("Replying to a tweet");
-      await scraper.replyToTweet(message.content.source, message.content.text);
+      await scraper.replyToTweet(message.content.source as string, message.content.text);
       elizaLogger.success("Tweet replied successfully");
       return true;
     } else if (message.content.action === "quote") {
       elizaLogger.log("Quoting a tweet");
-      await scraper.quoteTweet(message.content.source, message.content.text);
+      await scraper.quoteTweet(message.content.source as string, message.content.text);
       elizaLogger.success("Tweet quoted successfully");
       return true;
     } else if (message.content.action === "follow") {
       elizaLogger.log("Following a user");
-      await scraper.followUser(message.content.source);
+      await scraper.followUser(message.content.source as string);
       elizaLogger.success("User followed successfully");
       return true;
     } else {
