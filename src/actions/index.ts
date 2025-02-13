@@ -1,2 +1,2 @@
-export * from "./decideTwitterInteraction.ts";
-export * from "./tokenDecisionAction.ts";
+export * from "./decideTwitterInteraction";
+export * from "./tokenDecisionAction";

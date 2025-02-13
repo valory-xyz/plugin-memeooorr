@@ -1,14 +1,14 @@
 import type { Plugin } from "@elizaos/core";
-import { tweetProvider, twitterProvider } from "./providers/twitterProvider.ts";
-import { tokenProvider } from "./providers/tokenProvider.ts";
-import { decideTokenAction } from "./actions/tokenDecisionAction.ts";
-import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction.ts";
-import { safeAccountProvider } from "./providers/safeaccount.ts";
-import { DirectClient } from "@elizaos/client-direct";
+import { tweetProvider, twitterProvider } from "./providers/twitterProvider";
+import { tokenProvider } from "./providers/tokenProvider";
+import { decideTokenAction } from "./actions/tokenDecisionAction";
+import { decideTwitterInteractionAction } from "./actions/decideTwitterInteraction";
+import { safeAccountProvider } from "./providers/safeaccount";
+import { ACTIONS } from "./config";
 
-export * as actions from "./actions/index.ts";
-export * as providers from "./providers/index.ts";
-export * as types from "./types/index.ts";
+export * as actions from "./actions/index";
+export * as providers from "./providers/index";
+export * as types from "./types/index";
 
 // // Consider exposing these settings as environment variables to allow users to provide custom configuration values.
 // const config = {
@@ -61,4 +61,5 @@ export const memeoorPlugin: Plugin = {
   evaluators: [],
 };
 
-export default memeoorPlugin;
+export { ACTIONS };
+export default { memeoorPlugin };

@@ -1,1 +1,1 @@
-export * from "./twitterScrapper.ts";
+export * from "./twitterScrapper";

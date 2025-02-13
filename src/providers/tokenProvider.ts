@@ -5,11 +5,11 @@ import {
   type Provider,
   type State,
 } from "@elizaos/core";
-import { TwitterScraper, getScrapper } from "../utils/twitterScrapper.ts";
-import { MemeCoin } from "../types/chains.ts";
-import { Tweet } from "agent-twitter-client";
-import { Scraper, SearchMode } from "agent-twitter-client";
-import { getSafeAccount } from "./safeaccount.ts";
+import { TwitterScraper, getScrapper } from "../utils/twitterScrapper";
+import type { MemeCoin } from "../types/chains";
+import type { Tweet } from "agent-twitter-client";
+import { Scraper } from "agent-twitter-client";
+import { getSafeAccount } from "./safeaccount";
 
 export interface TokenInteractionResponse {
   tweet: Tweet;
@@ -19,17 +19,15 @@ export interface TokenInteractionResponse {
 }
 
 const tokenProvider: Provider = {
-  // eslint-disable-next-line
-  get: async (runtime: IAgentRuntime, message: Memory, _state?: State) => {
-    // if (!message.content.action) {
-    //   return false;
-    // } else if (message.content.action !== "TOKEN_ACTION") {
-    //   return false;
-    // }
-    //
+  get: async (runtime: IAgentRuntime, _message: Memory, _state?: State) => {
     elizaLogger.log("Fetching token information");
     const username = runtime.getSetting("TWITTER_USERNAME") as string;
     const subUrl = runtime.getSetting("MEME_SUBGRAPH_URl") as string;
+    const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
+    const memeFactoryAdress = runtime.getSetting(
+      "MEME_FACTORY_CONTRACT",
+    ) as `0x${string}`;
+    const safeAddress = runtime.getSetting("SAFE_ADDRESS") as `0x${string}`;
 
     const ts: Scraper | null = await getScrapper(runtime);
     if (!ts) {
@@ -47,9 +45,14 @@ const tokenProvider: Provider = {
     }
 
     elizaLogger.log("Fetch current memecoins");
-    const memeCoins: MemeCoin[] = await scraper.getTokens(subUrl);
+    const memeCoins: MemeCoin[] = await scraper.getTokens(
+      subUrl,
+      rpcUrl,
+      memeFactoryAdress,
+      safeAddress,
+    );
     if (!memeCoins) {
-      elizaLogger.error("Failed to fetch previous tweets");
+      elizaLogger.error("Failed to fetch memecoins");
       return false;
     }
 
@@ -59,7 +62,8 @@ const tokenProvider: Provider = {
     // fetch available balance
     const balanceClient = getSafeAccount(runtime);
     const balance = await balanceClient.getSafeBalance();
-    elizaLogger.debug("Tweet retrieved successfully");
+    elizaLogger.success("Balance retrieved successfully");
+    elizaLogger.success(`${balance}`);
 
     try {
       const result: TokenInteractionResponse = {

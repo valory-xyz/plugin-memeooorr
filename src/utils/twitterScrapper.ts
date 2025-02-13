@@ -1,7 +1,11 @@
-import { Scraper, Tweet, SearchMode } from "agent-twitter-client";
-import { elizaLogger, IAgentRuntime } from "@elizaos/core";
-import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants.ts";
-import { MemeCoin, TokensQuery } from "../types/chains.ts";
+import type { Tweet } from "agent-twitter-client";
+import { Scraper, SearchMode } from "agent-twitter-client";
+import { elizaLogger } from "@elizaos/core";
+import type { IAgentRuntime } from "@elizaos/core";
+import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants";
+import type { MemeCoin, TokensQuery } from "../types/chains";
+
+import { getBurnAmount } from "../wallet";
 
 import fs from "fs";
 
@@ -29,7 +33,6 @@ export class TwitterScraper {
       // Load cookies from file
       const cookies = await this.scraper.getCookies();
       fs.writeFileSync(cookiesFilePath, JSON.stringify(cookies, null, 2));
-
     }
     return true;
   }
@@ -197,7 +200,7 @@ export class TwitterScraper {
     return handles;
   }
 
-  public async getOtherUserTweets(_runtime: IAgentRuntime,handles: string[]) {
+  public async getOtherUserTweets(_runtime: IAgentRuntime, handles: string[]) {
     // query runtime Db for all messages with type as Interaction
     let tweets: Tweet[] = [];
 
@@ -207,7 +210,7 @@ export class TwitterScraper {
         if (tweet) {
           tweets.push(tweet);
         }
-      } catch(error) {
+      } catch (error) {
         elizaLogger.error("Failed to fetch tweet for handle:", handle);
       }
     }
@@ -232,7 +235,12 @@ export class TwitterScraper {
    * @param runtime Agent runtime environment
    * @returns Owner account
    */
-  public async getTokens(url: string) {
+  public async getTokens(
+    url: string,
+    rpc: string,
+    address: `0x${string}`,
+    safeAddress: `0x${string}`,
+  ) {
     elizaLogger.info("Getting tokens from Olas subgraph...");
 
     const data: TokensQuery = {
@@ -266,23 +274,68 @@ export class TwitterScraper {
         (t: any) => t.chain === "base" && parseInt(t.memeNonce) > 0,
       );
 
-      const memeCoins: MemeCoin[] = filteredItems.map((item: any) => ({
-        tokenName: item.name,
-        tokenTicker: item.symbol,
-        blockNumber: item.blockNumber,
-        chain: item.chain,
-        tokenAddress: item.memeToken,
-        liquidity: item.liquidity,
-        heartCount: item.heartCount,
-        isUnleashed: item.isUnleashed,
-        isPurged: item.isPurged,
-        lpPairAddress: item.lpPairAddress,
-        owner: item.owner,
-        timestamp: item.timestamp,
-        memeNonce: item.memeNonce,
-        summonTime: item.summonTime,
-        unleashTime: item.unleashTime,
-      }));
+      const burnAmount = await getBurnAmount(address, rpc);
+      const memeCoins: MemeCoin[] = filteredItems.map((item: any) => {
+        const now = Math.floor(Date.now() / 1000);
+        const secondsSinceSummon = now - item.summonTime;
+        const secondsSinceUnleash = now - item.unleashTime;
+        const isUnleashed = item.unleashTime !== 0;
+        const isPurged = item.isPurged;
+        const isHearted =
+          item.hearters && item.hearters[safeAddress] !== undefined;
+        const magaLaunched = item.memeNonce === 1 && item.unleashTime !== 0;
+
+        const availableActions: string[] = [];
+
+        // Heart
+        if (!isUnleashed && item.memeNonce !== 1) {
+          availableActions.push("heart");
+        }
+
+        // Unleash
+        if (
+          !isUnleashed &&
+          secondsSinceSummon > 24 * 3600 &&
+          item.memeNonce !== 1
+        ) {
+          availableActions.push("unleash");
+        }
+
+        // Collect
+        if (isUnleashed && secondsSinceUnleash < 24 * 3600 && isHearted) {
+          availableActions.push("collect");
+        }
+
+        // Purge
+        if (isUnleashed && secondsSinceUnleash > 24 * 3600 && !isPurged) {
+          availableActions.push("purge");
+        }
+
+        // Burn
+        if (magaLaunched && burnAmount > 0) {
+          availableActions.push("burn");
+        }
+
+        return {
+          tokenName: item.name,
+          tokenTicker: item.symbol,
+          blockNumber: item.blockNumber,
+          chain: item.chain,
+          tokenAddress: item.memeToken,
+          liquidity: item.liquidity,
+          heartCount: item.heartCount,
+          isUnleashed: item.isUnleashed,
+          isPurged: item.isPurged,
+          lpPairAddress: item.lpPairAddress,
+          owner: item.owner,
+          timestamp: item.timestamp,
+          memeNonce: item.memeNonce,
+          summonTime: item.summonTime,
+          unleashTime: item.unleashTime,
+          magaLaunched: magaLaunched,
+          availableActions: availableActions,
+        };
+      });
 
       return memeCoins;
     } catch (error) {
@@ -296,27 +349,33 @@ function readCookies() {
   if (fs.existsSync(__cookiesFilePath)) {
     const cookies = JSON.parse(fs.readFileSync(__cookiesFilePath, "utf8"));
     const cookieStrings = cookies?.map(
-        (cookie: any) =>
-          `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${
-            cookie.path
-          }; ${cookie.secure ? 'Secure' : ''}; ${
-            cookie.httpOnly ? 'HttpOnly' : ''
-          }; SameSite=${cookie.sameSite || 'Lax'}`,
-      );
+      (cookie: any) =>
+        `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${
+          cookie.path
+        }; ${cookie.secure ? "Secure" : ""}; ${
+          cookie.httpOnly ? "HttpOnly" : ""
+        }; SameSite=${cookie.sameSite || "Lax"}`,
+    );
     return cookieStrings;
   }
   return null;
 }
 
-export async function getScrapper(runtime: IAgentRuntime):Promise<Scraper | null> {
+export async function getScrapper(
+  runtime: IAgentRuntime,
+): Promise<Scraper | null> {
   const username = runtime.getSetting("TWITTER_USERNAME") as string;
   const password = runtime.getSetting("TWITTER_PASSWORD") as string;
   const email = runtime.getSetting("TWITTER_EMAIL") as string;
 
-  elizaLogger.info("Attempting Twitter login with username:", username, password, email);
+  elizaLogger.info(
+    "Attempting Twitter login with username:",
+    username,
+    password,
+    email,
+  );
 
   const ts = new Scraper();
-
 
   try {
     const cookieStrings = readCookies();
@@ -343,5 +402,4 @@ export async function getScrapper(runtime: IAgentRuntime):Promise<Scraper | null
   }
 
   return null;
-
 }

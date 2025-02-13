@@ -1,15 +1,18 @@
-import { elizaLogger, generateObject, ModelClass } from "@elizaos/core";
+import {
+  elizaLogger,
+  generateObject,
+  ModelClass,
+  stringToUuid,
+} from "@elizaos/core";
 import type {
   State,
-  HandlerCallback,
   Action,
   IAgentRuntime,
   Memory,
   Provider,
 } from "@elizaos/core";
-import type { TwitterInteractionResponse } from "../providers/twitterProvider.ts";
-import { TwitterInteractionSchema } from "../types/content.ts";
-import { mev } from "viem/chains";
+import type { TwitterInteractionResponse } from "../providers/twitterProvider";
+import { TwitterInteractionSchema } from "../types/content";
 
 /**
  * Action to decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.
@@ -26,7 +29,7 @@ export const decideTwitterInteractionAction = (
       "Decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.",
     similes: ["DECIDE_INTERACTION", "TWITTER_ACTION", "SOCIAL_DECISION"],
     examples: [],
-    validate: async (_runtime: IAgentRuntime, message: Memory) => {
+    validate: async (_runtime: IAgentRuntime, _message: Memory) => {
       // Check if the response message is in the correct format
       return true;
     },
@@ -34,7 +37,7 @@ export const decideTwitterInteractionAction = (
       runtime: IAgentRuntime,
       message: Memory,
       state: State | undefined,
-      options,
+      _options,
       callback,
     ) => {
       try {
@@ -47,10 +50,8 @@ export const decideTwitterInteractionAction = (
 
         elizaLogger.log("Fetching Twitter metadata");
 
-        const metadata: TwitterInteractionResponse | false = await tweetProvider.get(
-          runtime,
-          message,
-        );
+        const metadata: TwitterInteractionResponse | false =
+          await tweetProvider.get(runtime, message);
 
         if (!metadata) {
           return false;
@@ -100,7 +101,8 @@ export const decideTwitterInteractionAction = (
           modelClass: ModelClass.LARGE,
           schema: TwitterInteractionSchema,
           schemaName: "TwitterInteractionSchema",
-          schemaDescription: "Schema for Twitter interaction decisions, including actions and tweet IDs.",
+          schemaDescription:
+            "Schema for Twitter interaction decisions, including actions and tweet IDs.",
           mode: "json",
         });
 
@@ -136,7 +138,7 @@ export const decideTwitterInteractionAction = (
         }
 
         const tweetActionMemory: Memory = {
-          id: message.id,
+          id: stringToUuid(Date.now().toString()),
           content: {
             text: decisions.text,
             action: finalAction,
@@ -147,7 +149,21 @@ export const decideTwitterInteractionAction = (
           agentId: runtime.agentId,
         };
 
-        await runtime.messageManager.createMemory(tweetActionMemory);
+        if (finalAction === "none") {
+          elizaLogger.log("No action to take");
+          callback?.(
+            {
+              text: "No action to take.",
+              type: "success",
+            },
+            [],
+          );
+          return true;
+        }
+        await runtime.databaseAdapter.createMemory(
+          tweetActionMemory,
+          finalAction,
+        );
 
         twitterProvider.get(runtime, tweetActionMemory);
 
@@ -161,12 +177,10 @@ export const decideTwitterInteractionAction = (
 
         return true;
       } catch (error) {
-        elizaLogger.error(
-          `Error deciding Twitter interactions: ${error.message}`,
-        );
+        elizaLogger.error(`Error deciding Twitter interactions: ${error}`);
         callback?.(
           {
-            text: `Failed to decide interactions: ${error.message}`,
+            text: `Failed to decide interactions: ${error}`,
             type: "error",
           },
           [],

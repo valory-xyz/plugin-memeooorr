@@ -5,11 +5,9 @@ import {
   type Provider,
   type State,
 } from "@elizaos/core";
-import { TwitterScraper, getScrapper } from "../utils/twitterScrapper.ts";
-import { Scraper, } from "agent-twitter-client";
-import fs from "fs";
-import { runMain } from "module";
-import { ACTIONS } from "../config.ts";
+import { TwitterScraper, getScrapper } from "../utils/twitterScrapper";
+import { Scraper } from "agent-twitter-client";
+import { ACTIONS } from "../config";
 
 export interface TwitterInteractionResponse {
   persona: string;
@@ -19,8 +17,12 @@ export interface TwitterInteractionResponse {
 
 const tweetProvider: Provider = {
   // eslint-disable-next-line
-  get: async (runtime: IAgentRuntime, message: Memory, _state?: State):Promise<TwitterInteractionResponse | Boolean> => {
-    if (message.content.action!=ACTIONS.START) {
+  get: async (
+    runtime: IAgentRuntime,
+    message: Memory,
+    _state?: State,
+  ): Promise<TwitterInteractionResponse | Boolean> => {
+    if (message.content.action != ACTIONS.START) {
       return false;
     }
     const username = runtime.getSetting("TWITTER_USERNAME") as string;
@@ -56,7 +58,10 @@ const tweetProvider: Provider = {
       const subUrl = runtime.getSetting("SUBGRAPH_URL") as string;
       elizaLogger.log("Subgraph URL:", subUrl);
       try {
-        handles = await scraper.getUsersFromSubgraph(subUrl, username) as string[];
+        handles = (await scraper.getUsersFromSubgraph(
+          subUrl,
+          username,
+        )) as string[];
       } catch (error) {
         elizaLogger.error("Failed to get users from subgraph:", error);
         return false;
@@ -75,8 +80,6 @@ const tweetProvider: Provider = {
     } catch (error) {
       elizaLogger.error("Failed to fetch other tweets:", error);
     }
-
-
 
     let persona = runtime.character.bio;
 
@@ -103,15 +106,7 @@ const tweetProvider: Provider = {
 const twitterProvider: Provider = {
   // eslint-disable-next-line
   get: async (runtime: IAgentRuntime, message: Memory, _state?: State) => {
-
-    const actions = [
-      "tweet",
-      "like",
-      "retweet",
-      "reply",
-      "quote",
-      "follow",
-    ];
+    const actions = ["tweet", "like", "retweet", "reply", "quote", "follow"];
 
     // If the message content does not contain an action that is in actions list, return false
     if (!message.content.action || !actions.includes(message.content.action)) {
@@ -143,12 +138,18 @@ const twitterProvider: Provider = {
       return true;
     } else if (message.content.action === "reply") {
       elizaLogger.log("Replying to a tweet");
-      await scraper.replyToTweet(message.content.source as string, message.content.text);
+      await scraper.replyToTweet(
+        message.content.source as string,
+        message.content.text,
+      );
       elizaLogger.success("Tweet replied successfully");
       return true;
     } else if (message.content.action === "quote") {
       elizaLogger.log("Quoting a tweet");
-      await scraper.quoteTweet(message.content.source as string, message.content.text);
+      await scraper.quoteTweet(
+        message.content.source as string,
+        message.content.text,
+      );
       elizaLogger.success("Tweet quoted successfully");
       return true;
     } else if (message.content.action === "follow") {

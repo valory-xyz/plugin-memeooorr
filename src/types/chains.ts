@@ -88,6 +88,8 @@ export interface MemeCoin {
   memeNonce: string;
   summonTime: number;
   unleashTime: number;
+  magaLaunched: boolean;
+  availableActions: string[];
 }
 
 export interface TokensQuery {

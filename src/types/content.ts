@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Content } from "@elizaos/core";
+import { isAddress } from "viem";
 
 export interface TwitterInteractionResultContent extends Content {
   action: string;
@@ -29,12 +30,14 @@ export interface TokenInteractionResultContent extends Content {
 
 export const TokenInteractionSchema = z.object({
   action: z.enum(["summon", "heart", "unleash", "collect", "purge", "burn"]),
-  tokenAddress: z.string(),
+  tokenAddress: z
+    .string()
+    .refine(isAddress, { message: "Invalid Token Address" }),
   tokenName: z.string().nullable(),
   tokenTicker: z.string().nullable(),
-  tokenNonce: z.bigint(),
-  tokenSupply: z.bigint().nullable(),
-  amount: z.bigint(),
+  tokenNonce: z.string(),
+  tokenSupply: z.string().nullable(),
+  amount: z.string(),
   tweet: z.string(),
   newPersona: z.string().nullable(),
 });

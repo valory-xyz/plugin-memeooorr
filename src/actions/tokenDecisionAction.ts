@@ -1,14 +1,42 @@
+import type { Action, Provider, IAgentRuntime, Memory } from "@elizaos/core";
 import {
-  type Action,
-  type Provider,
+  ModelClass,
   elizaLogger,
   generateObject,
-  IAgentRuntime,
-  Memory,
-  ModelClass,
+  stringToUuid,
 } from "@elizaos/core";
 
-import { TokenInteractionSchema } from "../types/content.ts";
+import { TokenInteractionSchema } from "../types/content";
+
+const actions = ["summon", "heart", "unleash", "collect", "purge", "burn"];
+
+// Define the type for the decision object
+type Decision = {
+  action: "summon" | "heart" | "unleash" | "collect" | "purge" | "burn";
+  tokenAddress: string;
+  tokenNonce: bigint;
+  tokenName: string | null;
+  tokenTicker: string | null;
+  tokenSupply: bigint | null;
+  amount: bigint;
+  tweet: string;
+  new_persona: string | null;
+};
+
+// Function to convert content to the Decision type
+function convertToDecision(content: any): Decision {
+  return {
+    action: content.action, // Default to 'action1' if not valid
+    tokenAddress: content.tokenAddress || "",
+    tokenNonce: BigInt(content.tokenNonce || 0),
+    tokenName: content.tokenName || null,
+    tokenTicker: content.tokenTicker || null,
+    tokenSupply: content.tokenSupply ? BigInt(content.tokenSupply) : null,
+    amount: BigInt(content.amount || 0),
+    tweet: content.tweet || "",
+    new_persona: content.new_persona || null,
+  };
+}
 
 export const decideTokenAction = (
   tokenProvider: Provider,
@@ -30,10 +58,9 @@ export const decideTokenAction = (
       runtime: IAgentRuntime,
       message: Memory,
       state,
-      params,
+      _params,
       callback,
     ) => {
-
       // if (message.content.action !== "TOKEN_ACTION") {
       //   elizaLogger.error("No runtime provided");
       //   return false;
@@ -125,42 +152,27 @@ export const decideTokenAction = (
           schema: TokenInteractionSchema,
         });
 
-        const actions = [
-          "summon",
-          "heart",
-          "unleash",
-          "collect",
-          "purge",
-          "burn",
-        ];
-
         const supportedActions: (typeof actions)[number][] = [...actions];
 
-        const decision = content.object as {
+        const mappedCon = content.object as {
           action: (typeof supportedActions)[number];
           tokenAddress: string;
-          tokenNonce: bigint;
+          tokenNonce: string;
           tokenName: string | null;
           tokenTicker: string | null;
-          tokenSupply: bigint | null;
-          amount: bigint;
+          tokenSupply: string | null;
+          amount: string;
           tweet: string;
           new_persona: string | null;
         };
+
+        const decision: Decision = convertToDecision(mappedCon);
         elizaLogger.log("Token decision:", decision);
 
-        // check if action is deploy or heart and get the amount
-        // if not deploy or heart, set amount to 0
-        if (decision.action === "deploy" || decision.action === "heart") {
-          decision.amount = BigInt(decision.amount);
-        } else {
-          decision.amount = BigInt(0);
-        }
-
         const tokenDecisionMemory: Memory = {
-          id: message.id,
+          id: stringToUuid(Date.now().toString()),
           content: {
-            text: JSON.stringify(decision),
+            text: JSON.stringify(mappedCon),
             action: decision.action,
             source: "token_decision",
           },
@@ -172,7 +184,7 @@ export const decideTokenAction = (
         await runtime.messageManager.createMemory(tokenDecisionMemory);
 
         const exectutionMemory: Memory = {
-          id: message.id,
+          id: stringToUuid(Date.now().toString()),
           content: {
             text: "Exectuting action decided by the agent",
             action: decision.action,
@@ -181,7 +193,6 @@ export const decideTokenAction = (
           userId: message.userId,
           agentId: runtime.agentId,
         };
-
 
         await runtime.messageManager.createMemory(exectutionMemory);
 
