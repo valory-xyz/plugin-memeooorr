@@ -137,6 +137,18 @@ export const decideTwitterInteractionAction = (
           finalAction = "none";
         }
 
+        if (finalAction === "none") {
+          elizaLogger.log("No action to take");
+          callback?.(
+            {
+              text: "No action to take.",
+              type: "success",
+            },
+            [],
+          );
+          return true;
+        }
+
         const tweetActionMemory: Memory = {
           id: stringToUuid(Date.now().toString()),
           content: {
@@ -149,17 +161,10 @@ export const decideTwitterInteractionAction = (
           agentId: runtime.agentId,
         };
 
-        if (finalAction === "none") {
-          elizaLogger.log("No action to take");
-          callback?.(
-            {
-              text: "No action to take.",
-              type: "success",
-            },
-            [],
-          );
-          return true;
+        if (finalAction != "tweet") {
+          tweetActionMemory.id = stringToUuid(decisions.tweet_id);
         }
+
         await runtime.databaseAdapter.createMemory(
           tweetActionMemory,
           finalAction,
