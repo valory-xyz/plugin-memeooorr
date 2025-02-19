@@ -44,7 +44,7 @@ const tweetProvider: Provider = {
     elizaLogger.log("Latest Fetched Tweet From User:", tweet);
 
     elizaLogger.log("Fetch previous Tweets from user");
-    const previousTweets = await scraper.fetchPreviousTweets(tweet);
+    const previousTweets = await scraper.fetchPreviousTweets(username, tweet);
     if (!previousTweets) {
       elizaLogger.error("Failed to fetch previous tweets");
       return false;
@@ -76,7 +76,7 @@ const tweetProvider: Provider = {
       if (!otherTweets) {
         elizaLogger.error("Failed to fetch other tweets");
       }
-      elizaLogger.log("Other Tweets fetched successfully!", otherTweets);
+      elizaLogger.success("Other Tweets fetched successfully!", otherTweets);
     } catch (error) {
       elizaLogger.error("Failed to fetch other tweets:", error);
     }
