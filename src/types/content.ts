@@ -32,7 +32,9 @@ export const TokenInteractionSchema = z.object({
   action: z.enum(["summon", "heart", "unleash", "collect", "purge", "burn"]),
   tokenAddress: z
     .string()
-    .refine(isAddress, { message: "Invalid Token Address" }),
+    .refine((val) => val === "" || isAddress(val), {
+      message: "Invalid Token Address",
+    }),
   tokenName: z.string().nullable(),
   tokenTicker: z.string().nullable(),
   tokenNonce: z.string(),
