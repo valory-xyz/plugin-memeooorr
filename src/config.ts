@@ -69,3 +69,8 @@ export default {
   PROVIDER_CONFIG,
   CHAIN_CONFIG,
 };
+
+export const TOKEN_INTERACTION_CONFIG = {
+  ACTIONS: ["summon", "heart", "unleash", "collect", "purge", "burn"],
+  TICKER: "ETH",
+};
