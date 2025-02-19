@@ -13,19 +13,15 @@ import { elizaLogger } from "@elizaos/core";
 import type {
   Address,
   Chain,
-  Client,
   EncodeFunctionDataReturnType,
   Hex,
   TransactionReceipt,
-  Transport,
-  Account,
 } from "viem";
 import { createWalletClient, encodeFunctionData, http, parseGwei } from "viem";
 
 import { initializeSafeClient } from "safe-client";
 
 import type { GetTransactionReceiptReturnType } from "viem";
-import { createPublicClient } from "viem";
 import type { TransactionResult } from "@safe-global/types-kit";
 import { memeFactoryAbi } from "../abi/memefactory";
 import { privateKeyToAccount, nonceManager } from "viem/accounts";
@@ -33,6 +29,7 @@ import { base } from "viem/chains";
 
 import { TwitterScraper, getScrapper } from "../utils/twitterScrapper";
 import { Scraper } from "agent-twitter-client";
+import { getTokenNonce } from "../wallet";
 
 // Define the type for the decision object
 type Decision = {
@@ -203,6 +200,15 @@ export class SafeClient {
     return balance;
   }
 
+  async getNonce() {
+    if (!protocolKitInstance) {
+      await this.getProtocolKit();
+    }
+
+    const nonce = await protocolKitInstance.getNonce();
+    return nonce;
+  }
+
   async buildWalletTransaction(data: Hex, nonce: number) {
     const walletClient = this.initWalletClient();
     const request = await walletClient.prepareTransactionRequest({
@@ -262,7 +268,7 @@ export const getSafeAccount = (runtime: IAgentRuntime) => {
   const safeAddress = runtime.getSetting("SAFE_ADDRESS") as Address;
   const ownerPrivateKey = runtime.getSetting("AGENT_EOA_PK") as `0x${string}`;
   const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
-  const chainId = BigInt(runtime.getSetting("CHAIN_ID") as string);
+  const chainId = BigInt("8453");
 
   return new SafeClient(safeAddress, ownerPrivateKey, rpcUrl, chainId);
 };
@@ -303,6 +309,7 @@ export const safeAccountProvider: Provider = {
       let value: string = decision.amount.toString();
 
       const safeAccountClient = getSafeAccount(runtime);
+      const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
 
       let data: EncodeFunctionDataReturnType | undefined = undefined;
 
@@ -367,13 +374,7 @@ export const safeAccountProvider: Provider = {
         });
       }
 
-      const sfc = await createSafeClient({
-        provider: runtime.getSetting("BASE_LEDGER_RPC") as string,
-        signer: runtime.getSetting("AGENT_EOA_PK") as string,
-        safeAddress: runtime.getSetting("SAFE_ADDRESS") as string,
-      });
-
-      const nonce = await sfc.getNonce();
+      const nonce = await safeAccountClient.getNonce();
 
       if (!data || !nonce) {
         throw new Error("Data or nonce is missing");
@@ -396,12 +397,24 @@ export const safeAccountProvider: Provider = {
       const receipt = await safeAccountClient.sendTransactions(transactions);
       elizaLogger.log(receipt);
 
+      let summoned_token_nonce = undefined;
+
+      // if (decision.action === "summon") {
+      //   summoned_token_nonce = await getTokenNonce(
+      //     receipt.transactionHash,
+      //     rpcUrl,
+      //   );
+      // }
+
       const actionSuccessMemory: Memory = {
         id: stringToUuid(Date.now().toString()),
         content: {
-          text: "Safe transaction Succesful",
+          text: "Safe transaction successful",
           action: decision.action,
           hash: receipt.transactionHash,
+          nonce: summoned_token_nonce
+            ? summoned_token_nonce.tokenNonce
+            : undefined,
         },
         roomId: message.roomId,
         userId: message.userId,
