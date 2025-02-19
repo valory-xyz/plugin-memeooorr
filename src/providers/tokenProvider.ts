@@ -22,7 +22,7 @@ const tokenProvider: Provider = {
   get: async (runtime: IAgentRuntime, _message: Memory, _state?: State) => {
     elizaLogger.log("Fetching token information");
     const username = runtime.getSetting("TWITTER_USERNAME") as string;
-    const subUrl = runtime.getSetting("MEME_SUBGRAPH_URl") as string;
+    const subUrl = runtime.getSetting("MEME_SUBGRAPH_URL") as string;
     const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
     const memeFactoryAdress = runtime.getSetting(
       "MEME_FACTORY_CONTRACT",
@@ -57,7 +57,7 @@ const tokenProvider: Provider = {
     }
 
     elizaLogger.log("Fetch replies to tweets");
-    const replies = await scraper.getTweetReplies(tweet);
+    const replies = await scraper.getTweetReplies(username, tweet);
 
     // fetch available balance
     const balanceClient = getSafeAccount(runtime);
