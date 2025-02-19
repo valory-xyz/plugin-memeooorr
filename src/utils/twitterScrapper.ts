@@ -1,6 +1,6 @@
 import type { Tweet } from "agent-twitter-client";
 import { Scraper, SearchMode } from "agent-twitter-client";
-import { elizaLogger } from "@elizaos/core";
+import { elizaLogger, stringToUuid } from "@elizaos/core";
 import type { IAgentRuntime } from "@elizaos/core";
 import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants";
 import type { MemeCoin, TokensQuery } from "../types/chains";
@@ -18,15 +18,28 @@ export class TwitterScraper {
     this.scraper = sc;
   }
 
+  /**
+   * Get the scraper instance.
+   * @returns {Scraper} The scraper instance.
+   */
   public getScraper(): Scraper {
     return this.scraper;
   }
 
-  public async getUserIdByScreenName(screenName: string) {
+  /**
+   * Get the user ID by screen name.
+   * @param {string} screenName - The screen name of the user.
+   * @returns {Promise<string>} The user ID.
+   */
+  public async getUserIdByScreenName(screenName: string): Promise<string> {
     return await this.scraper.getUserIdByScreenName(screenName);
   }
 
-  public async saveCookies() {
+  /**
+   * Save cookies to a file.
+   * @returns {Promise<boolean>} True if cookies were saved successfully.
+   */
+  public async saveCookies(): Promise<boolean> {
     const cookiesFilePath = "./cookies.json";
 
     if (!fs.existsSync(cookiesFilePath)) {
@@ -38,21 +51,11 @@ export class TwitterScraper {
   }
 
   /**
-   * Get Subgraph url for querying
-   * @param runtime Agent runtime environment
-   * @returns Subgraph url
-   * @throws Error if subgraph url is missing or invalid
+   * Like a tweet by ID.
+   * @param {string} id - The ID of the tweet to like.
+   * @returns {Promise<void>}
    */
-  public getSubgraphUrl(): string {
-    const subgraphUrl = process.env.SUBGRAPH_URL;
-    if (!subgraphUrl) {
-      throw new Error("No subgraph url configured");
-    }
-
-    return subgraphUrl;
-  }
-
-  public async likeTweet(id: string) {
+  public async likeTweet(id: string): Promise<void> {
     if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
@@ -60,7 +63,12 @@ export class TwitterScraper {
     return await this.scraper.likeTweet(id);
   }
 
-  public async retweet(id: string) {
+  /**
+   * Retweet a tweet by ID.
+   * @param {string} id - The ID of the tweet to retweet.
+   * @returns {Promise<void>}
+   */
+  public async retweet(id: string): Promise<void> {
     if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
@@ -68,11 +76,22 @@ export class TwitterScraper {
     return await this.scraper.retweet(id);
   }
 
-  public async sendUserTweet(message: string) {
+  /**
+   * Send a tweet.
+   * @param {string} message - The message to tweet.
+   * @returns {Promise<Response>}
+   */
+  public async sendUserTweet(message: string): Promise<Response> {
     return await this.scraper.sendTweet(message);
   }
 
-  public async replyToTweet(id: string, message: string) {
+  /**
+   * Reply to a tweet by ID.
+   * @param {string} id - The ID of the tweet to reply to.
+   * @param {string} message - The reply message.
+   * @returns { Promise<Response>}
+   */
+  public async replyToTweet(id: string, message: string): Promise<Response> {
     if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
@@ -80,11 +99,22 @@ export class TwitterScraper {
     return await this.scraper.sendQuoteTweet(message, id);
   }
 
-  public async followUser(userId: string) {
+  /**
+   * Follow a user by user ID.
+   * @param {string} userId - The ID of the user to follow.
+   * @returns {Promise<void>}
+   */
+  public async followUser(userId: string): Promise<void> {
     return await this.scraper.followUser(userId);
   }
 
-  public async quoteTweet(id: string, message: string) {
+  /**
+   * Quote a tweet by ID.
+   * @param {string} id - The ID of the tweet to quote.
+   * @param {string} message - The quote message.
+   * @returns {Promise<Response>}
+   */
+  public async quoteTweet(id: string, message: string): Promise<Response> {
     if (!id) {
       elizaLogger.error("Tweet id not found");
       throw new Error("Tweet id not found");
@@ -92,7 +122,14 @@ export class TwitterScraper {
     return await this.scraper.sendTweet(message, id);
   }
 
-  public async getUserLatestTweet(username: string) {
+  /**
+   * Get the latest tweet of a user by username.
+   * @param {string} username - The username of the user.
+   * @returns { Promise<Tweet | null | void>} The latest tweet.
+   */
+  public async getUserLatestTweet(
+    username: string,
+  ): Promise<Tweet | null | void> {
     if (!username) {
       elizaLogger.error("Twitter username not configured in environment");
       throw new Error("Twitter username not configured in environment");
@@ -100,8 +137,16 @@ export class TwitterScraper {
     return await this.scraper.getLatestTweet(username);
   }
 
-  public async getTweetReplies(tweet: Tweet) {
-    const username = process.env.TWITTER_USERNAME;
+  /**
+   * Get replies to a tweet.
+   * @param {string} username - The username of the user.
+   * @param {Tweet} tweet - The tweet to get replies for.
+   * @returns {Promise<Tweet[]>} The replies to the tweet.
+   */
+  public async getTweetReplies(
+    username: string,
+    tweet: Tweet,
+  ): Promise<Tweet[]> {
     if (!username) {
       elizaLogger.error("Twitter username not configured in environment");
       throw new Error("Twitter username not configured in environment");
@@ -121,8 +166,16 @@ export class TwitterScraper {
     return replies.tweets;
   }
 
-  public async fetchPreviousTweets(tweet: Tweet) {
-    const username = process.env.TWITTER_USERNAME;
+  /**
+   * Fetch previous tweets of a user.
+   * @param {string} username - The username of the user.
+   * @param {Tweet} tweet - The current tweet.
+   * @returns {Promise<string>} The previous tweets.
+   */
+  public async fetchPreviousTweets(
+    username: string,
+    tweet: Tweet,
+  ): Promise<string> {
     if (!username) {
       elizaLogger.error("Twitter username not configured in environment");
       throw new Error("Twitter username not configured in environment");
@@ -141,14 +194,23 @@ export class TwitterScraper {
     const prev = filteredTweets
       .map(
         (tweet) =>
-          `tweet_id: ${tweet.id}\ntweet_text: ${tweet.text}\nuser_id: ${tweet.userId}`,
+          `tweet_id: ${tweet.id}\ntweet_text: ${tweet.text}\ntime: ${tweet.timeParsed.toString()}`,
       )
       .join("\n\n");
 
     return prev;
   }
 
-  async getUsersFromSubgraph(url: string, username: string) {
+  /**
+   * Get users from subgraph.
+   * @param {string} url - The URL of the subgraph.
+   * @param {string} username - The username to exclude from the results.
+   * @returns {Promise<string[] | null>} The list of user handles.
+   */
+  async getUsersFromSubgraph(
+    url: string,
+    username: string,
+  ): Promise<string[] | null> {
     let handles: string[] = [];
 
     const MEMEOOORR_DESCRIPTION_PATTERN = /^Memeooorr @(\w+)$/;
@@ -200,7 +262,16 @@ export class TwitterScraper {
     return handles;
   }
 
-  public async getOtherUserTweets(_runtime: IAgentRuntime, handles: string[]) {
+  /**
+   * Get tweets from other users.
+   * @param {IAgentRuntime} _runtime - The agent runtime environment.
+   * @param {string[]} handles - The list of user handles.
+   * @returns {Promise<string>} The tweets from other users.
+   */
+  public async getOtherUserTweets(
+    _runtime: IAgentRuntime,
+    handles: string[],
+  ): Promise<string> {
     // query runtime Db for all messages with type as Interaction
     let tweets: Tweet[] = [];
 
@@ -211,7 +282,7 @@ export class TwitterScraper {
           tweets.push(tweet);
         }
       } catch (error) {
-        elizaLogger.error("Failed to fetch tweet for handle:", handle);
+        continue;
       }
     }
 
@@ -219,8 +290,23 @@ export class TwitterScraper {
       elizaLogger.error("No tweets found for any of the handles");
     }
 
+    // convert tweet ids to uuid
+    let nonInteractedTweets: Tweet[] = [];
+    for (const tweet of tweets) {
+      const tweetUUID = stringToUuid(tweet.id);
+      const memory = await _runtime.databaseAdapter.getMemoryById(tweetUUID);
+      if (!memory) {
+        nonInteractedTweets.push(tweet);
+      }
+    }
+
+    if (nonInteractedTweets.length === 0) {
+      elizaLogger.warn("Interacted with all user tweets, reinteracting");
+      nonInteractedTweets = tweets;
+    }
+
     // Parse the tweets using the provided logic
-    const other_tweets = tweets
+    const other_tweets = nonInteractedTweets
       .map(
         (tweet) =>
           `tweet_id: ${tweet.id}\ntweet_text: ${tweet.text}\nuser_id: ${tweet.userId}`,
@@ -231,16 +317,19 @@ export class TwitterScraper {
   }
 
   /**
-   * Get tokens from subgraph
-   * @param runtime Agent runtime environment
-   * @returns Owner account
+   * Get tokens from subgraph.
+   * @param {string} url - The URL of the subgraph.
+   * @param {string} rpc - The RPC endpoint.
+   * @param {`0x${string}`} address - The address of the owner.
+   * @param {`0x${string}`} safeAddress - The safe address.
+   * @returns {Promise<MemeCoin[]>} The list of meme coins.
    */
   public async getTokens(
     url: string,
     rpc: string,
     address: `0x${string}`,
     safeAddress: `0x${string}`,
-  ) {
+  ): Promise<MemeCoin[]> {
     elizaLogger.info("Getting tokens from Olas subgraph...");
 
     const data: TokensQuery = {
@@ -273,6 +362,7 @@ export class TwitterScraper {
       const filteredItems = items.filter(
         (t: any) => t.chain === "base" && parseInt(t.memeNonce) > 0,
       );
+      elizaLogger.log(filteredItems);
 
       const burnAmount = await getBurnAmount(address, rpc);
       const memeCoins: MemeCoin[] = filteredItems.map((item: any) => {
@@ -321,7 +411,7 @@ export class TwitterScraper {
           tokenTicker: item.symbol,
           blockNumber: item.blockNumber,
           chain: item.chain,
-          tokenAddress: item.memeToken,
+          tokenAddress: item.tokenAddress,
           liquidity: item.liquidity,
           heartCount: item.heartCount,
           isUnleashed: item.isUnleashed,
@@ -345,7 +435,11 @@ export class TwitterScraper {
   }
 }
 
-function readCookies() {
+/**
+ * Read cookies from the file system.
+ * @returns {string[] | null} The list of cookie strings or null if no cookies found.
+ */
+function readCookies(): string[] | null {
   if (fs.existsSync(__cookiesFilePath)) {
     const cookies = JSON.parse(fs.readFileSync(__cookiesFilePath, "utf8"));
     const cookieStrings = cookies?.map(
@@ -361,6 +455,11 @@ function readCookies() {
   return null;
 }
 
+/**
+ * Get the Twitter scraper instance.
+ * @param {IAgentRuntime} runtime - The agent runtime environment.
+ * @returns {Promise<Scraper | null>} The scraper instance or null if login failed.
+ */
 export async function getScrapper(
   runtime: IAgentRuntime,
 ): Promise<Scraper | null> {
@@ -368,12 +467,7 @@ export async function getScrapper(
   const password = runtime.getSetting("TWITTER_PASSWORD") as string;
   const email = runtime.getSetting("TWITTER_EMAIL") as string;
 
-  elizaLogger.info(
-    "Attempting Twitter login with username:",
-    username,
-    password,
-    email,
-  );
+  elizaLogger.info("Attempting Twitter login with username:", username, email);
 
   const ts = new Scraper();
 
