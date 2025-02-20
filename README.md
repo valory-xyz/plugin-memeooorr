@@ -1,5 +1,5 @@
 # plugin-memeooorr
-Eliza plugin for memeoor Agent developed on autonolas framework.
+Eliza plugin for memeooor Agent developed on autonolas framework.
 
 > :warning: **Warning** <br />
 > The code within this repository is provided without any warranties. It is important to note that the code has not been audited for potential security vulnerabilities.
