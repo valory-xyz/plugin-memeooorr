@@ -41,7 +41,7 @@ const tweetProvider: Provider = {
       elizaLogger.error("Failed to fetch latest tweet");
       return false;
     }
-    elizaLogger.log("Latest Fetched Tweet From User:", tweet);
+    elizaLogger.success("Latest Fetched Tweet From User:", tweet);
 
     elizaLogger.log("Fetch previous Tweets from user");
     const previousTweets = await scraper.fetchPreviousTweets(username, tweet);
@@ -49,7 +49,10 @@ const tweetProvider: Provider = {
       elizaLogger.error("Failed to fetch previous tweets");
       return false;
     }
-    elizaLogger.log("Previous Tweets fetched successfully!", previousTweets);
+    elizaLogger.success(
+      "Previous Tweets fetched successfully!",
+      previousTweets,
+    );
 
     elizaLogger.log("Fetch other tweets from user");
     let otherTweets: string = "";
@@ -65,10 +68,6 @@ const tweetProvider: Provider = {
       } catch (error) {
         elizaLogger.error("Failed to get users from subgraph:", error);
         return false;
-      }
-
-      for (const handle of handles) {
-        elizaLogger.log("Handle:", handle);
       }
 
       // if handles not empty, get other tweets
@@ -94,7 +93,7 @@ const tweetProvider: Provider = {
         prevTweets: previousTweets,
         otherTweets: otherTweets,
       };
-      elizaLogger.debug("Tweet retrieved successfully");
+      elizaLogger.success("Twitter Interaction payload retrieved successfully");
       return result;
     } catch (error) {
       elizaLogger.error("Failed to fetch tweet:", error);

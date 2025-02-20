@@ -80,13 +80,15 @@ const MAX_HEART_VALUE = 20000000000000n;
 
 let protocolKitInstance: Safe | null = null;
 
+/**
+ *
+ * @param protocolKit
+ */
 export const getProtocolKit = async (protocolKit: Safe) => {
   if (!protocolKitInstance) {
     protocolKitInstance = protocolKit;
   }
 };
-
-// export const protocolKit = Safe;
 
 /**
  * A Safe-based transaction provider.
