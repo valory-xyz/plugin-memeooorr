@@ -373,12 +373,12 @@ export class TwitterScraper {
         const isPurged = item.isPurged;
         const isHearted =
           item.hearters && item.hearters[safeAddress] !== undefined;
-        const magaLaunched = item.memeNonce === 1 && item.unleashTime !== 0;
+        const magaLaunched = item.memeNonce === "1" && item.unleashTime !== 0;
 
         const availableActions: string[] = [];
 
         // Heart
-        if (!isUnleashed && item.memeNonce !== 1) {
+        if (!isUnleashed && item.memeNonce !== "1") {
           availableActions.push("heart");
         }
 
@@ -411,7 +411,7 @@ export class TwitterScraper {
           tokenTicker: item.symbol,
           blockNumber: item.blockNumber,
           chain: item.chain,
-          tokenAddress: item.tokenAddress,
+          tokenAddress: item.memeToken,
           liquidity: item.liquidity,
           heartCount: item.heartCount,
           isUnleashed: item.isUnleashed,
