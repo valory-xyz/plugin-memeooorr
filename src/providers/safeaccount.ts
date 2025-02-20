@@ -80,13 +80,15 @@ const MAX_HEART_VALUE = 20000000000000n;
 
 let protocolKitInstance: Safe | null = null;
 
+/**
+ *
+ * @param protocolKit
+ */
 export const getProtocolKit = async (protocolKit: Safe) => {
   if (!protocolKitInstance) {
     protocolKitInstance = protocolKit;
   }
 };
-
-// export const protocolKit = Safe;
 
 /**
  * A Safe-based transaction provider.
@@ -398,13 +400,6 @@ export const safeAccountProvider: Provider = {
       elizaLogger.log(receipt);
 
       let summoned_token_nonce = undefined;
-
-      // if (decision.action === "summon") {
-      //   summoned_token_nonce = await getTokenNonce(
-      //     receipt.transactionHash,
-      //     rpcUrl,
-      //   );
-      // }
 
       const actionSuccessMemory: Memory = {
         id: stringToUuid(Date.now().toString()),

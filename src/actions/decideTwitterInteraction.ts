@@ -48,7 +48,9 @@ export const decideTwitterInteractionAction = (
           currentState = await runtime.updateRecentMessageState(state);
         }
 
-        elizaLogger.log("Fetching Twitter metadata");
+        elizaLogger.assert(
+          "Fetching Twitter metadata to decide on interaction",
+        );
 
         const metadata: TwitterInteractionResponse | false =
           await tweetProvider.get(runtime, message);

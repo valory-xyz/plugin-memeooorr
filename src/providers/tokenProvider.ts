@@ -37,14 +37,14 @@ const tokenProvider: Provider = {
 
     const scraper = new TwitterScraper(ts);
 
-    elizaLogger.log("Fetching latest tweets for user");
+    elizaLogger.assert("Fetching latest tweets for user");
     const tweet = await scraper.getUserLatestTweet(username);
     if (!tweet) {
       elizaLogger.error("Failed to fetch latest tweet");
       return false;
     }
 
-    elizaLogger.log("Fetch current memecoins");
+    elizaLogger.assert("Fetch current memecoins");
     const memeCoins: MemeCoin[] = await scraper.getTokens(
       subUrl,
       rpcUrl,
@@ -56,7 +56,7 @@ const tokenProvider: Provider = {
       return false;
     }
 
-    elizaLogger.log("Fetch replies to tweets");
+    elizaLogger.assert("Fetch replies to tweets");
     const replies = await scraper.getTweetReplies(username, tweet);
 
     // fetch available balance
@@ -72,7 +72,7 @@ const tokenProvider: Provider = {
         replies: replies,
         balance: balance.toString(),
       };
-      elizaLogger.debug("Tweet retrieved successfully");
+      elizaLogger.success("Token interaction payload retrieved successfully");
       return result;
     } catch (error) {
       elizaLogger.error("Failed to fetch tweet:", error);

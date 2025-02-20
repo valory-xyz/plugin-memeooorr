@@ -1,5 +1,12 @@
 # plugin-memeooorr
-Eliza plugin for memeoor Agent developed on autonolas framework.
+Eliza plugin for memeooor Agent developed on autonolas framework.
+
+> :warning: **Warning** <br />
+> The code within this repository is provided without any warranties. It is important to note that the code has not been audited for potential security vulnerabilities.
+> Using this code could potentially lead to loss of funds, compromised data, or asset risk.
+> Exercise caution and use this code at your own risk. Please refer to the [LICENSE](./LICENSE) file for details about the terms and conditions.
+> The plugin for now is specifically designed to be used with [agents-fun-eliza](https://github.com/valory-xyz/agents-fun-eliza).
+
 # Eliza Twitter Plugin
 
 ## Overview
@@ -24,7 +31,7 @@ This plugin provides:
    - Incorporates Twitter engagement metrics for holistic decision-making.
 
 ### Services
-The **TwitterService** integrates with the ElizaOS `client-twitter` module to:
+The **TwitterService** integrates with the ElizaOS `agent-twitter-client` module to:
 
 - Post tweets.
 - Reply to tweets with conversational threads.
@@ -72,10 +79,10 @@ const result = await runtime.invokeAction('decideTokenAction', {
 
 #### Reply to a Tweet
 
-Use the `TwitterService` to reply to a specific tweet:
+Use the `TwitterScraper` to reply to a specific tweet:
 
 ```typescript
-await twitterService.buildConversationThread(tweet, maxReplies);
+await twitterService.replyToTweet(id, message);
 ```
 
 
@@ -86,13 +93,6 @@ await twitterService.buildConversationThread(tweet, maxReplies);
 - **services/**: Implements services to interact with Twitter.
 - **constants/**: Stores shared constants and configurations.
 - **types/**: Defines TypeScript interfaces and types.
-
-### Running Tests
-Use the following command to run the test suite:
-
-```bash
-pnpm test
-```
 
 ## Contributing
 
@@ -116,4 +116,4 @@ Contributions are welcome! Please follow these steps:
 
 ### Contact
 
-For support or inquiries, reach out to (mailto:keshav.mishra0298@gmail.com).
+For support or inquiries, reach out to (mailto:info@valory.xyz).

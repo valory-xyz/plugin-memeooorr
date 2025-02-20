@@ -35,28 +35,30 @@ const tweetProvider: Provider = {
 
     const scraper = new TwitterScraper(ts);
 
-    elizaLogger.log("Fetching latest tweets for user");
+    elizaLogger.assert("Fetching latest tweets for user");
     const tweet = await scraper.getUserLatestTweet(username);
     if (!tweet) {
       elizaLogger.error("Failed to fetch latest tweet");
       return false;
     }
-    elizaLogger.log("Latest Fetched Tweet From User:", tweet);
+    elizaLogger.success("Latest Fetched Tweet From User:", tweet);
 
-    elizaLogger.log("Fetch previous Tweets from user");
+    elizaLogger.assert("Fetch previous Tweets from user");
     const previousTweets = await scraper.fetchPreviousTweets(username, tweet);
     if (!previousTweets) {
       elizaLogger.error("Failed to fetch previous tweets");
       return false;
     }
-    elizaLogger.log("Previous Tweets fetched successfully!", previousTweets);
+    elizaLogger.success(
+      "Previous Tweets fetched successfully!",
+      previousTweets,
+    );
 
-    elizaLogger.log("Fetch other tweets from user");
+    elizaLogger.assert("Fetch other tweets from user, will take time");
     let otherTweets: string = "";
     let handles: string[] = [];
     try {
       const subUrl = runtime.getSetting("SUBGRAPH_URL") as string;
-      elizaLogger.log("Subgraph URL:", subUrl);
       try {
         handles = (await scraper.getUsersFromSubgraph(
           subUrl,
@@ -65,10 +67,6 @@ const tweetProvider: Provider = {
       } catch (error) {
         elizaLogger.error("Failed to get users from subgraph:", error);
         return false;
-      }
-
-      for (const handle of handles) {
-        elizaLogger.log("Handle:", handle);
       }
 
       // if handles not empty, get other tweets
@@ -94,7 +92,7 @@ const tweetProvider: Provider = {
         prevTweets: previousTweets,
         otherTweets: otherTweets,
       };
-      elizaLogger.debug("Tweet retrieved successfully");
+      elizaLogger.success("Twitter Interaction payload retrieved successfully");
       return result;
     } catch (error) {
       elizaLogger.error("Failed to fetch tweet:", error);
@@ -122,22 +120,22 @@ const twitterProvider: Provider = {
     const scraper = new TwitterScraper(ts);
 
     if (message.content.action === "tweet") {
-      elizaLogger.log("posting a new tweet");
+      elizaLogger.assert("posting a new tweet");
       await scraper.sendUserTweet(message.content.text);
       elizaLogger.success("Tweet posted successfully");
       return true;
     } else if (message.content.action === "like") {
-      elizaLogger.log("Liking a tweet");
+      elizaLogger.assert("Liking a tweet");
       await scraper.likeTweet(message.content.source as string);
       elizaLogger.success("Tweet liked successfully");
       return true;
     } else if (message.content.action === "retweet") {
-      elizaLogger.log("Retweeting a tweet");
+      elizaLogger.assert("Retweeting a tweet");
       await scraper.retweet(message.content.source as string);
       elizaLogger.success("Tweet retweeted successfully");
       return true;
     } else if (message.content.action === "reply") {
-      elizaLogger.log("Replying to a tweet");
+      elizaLogger.assert("Replying to a tweet");
       await scraper.replyToTweet(
         message.content.source as string,
         message.content.text,
@@ -145,7 +143,7 @@ const twitterProvider: Provider = {
       elizaLogger.success("Tweet replied successfully");
       return true;
     } else if (message.content.action === "quote") {
-      elizaLogger.log("Quoting a tweet");
+      elizaLogger.assert("Quoting a tweet");
       await scraper.quoteTweet(
         message.content.source as string,
         message.content.text,
