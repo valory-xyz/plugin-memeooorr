@@ -79,10 +79,10 @@ const result = await runtime.invokeAction('decideTokenAction', {
 
 #### Reply to a Tweet
 
-Use the `TwitterService` to reply to a specific tweet:
+Use the `TwitterScraper` to reply to a specific tweet:
 
 ```typescript
-await twitterService.buildConversationThread(tweet, maxReplies);
+await twitterService.replyToTweet(id, message);
 ```
 
 
@@ -93,13 +93,6 @@ await twitterService.buildConversationThread(tweet, maxReplies);
 - **services/**: Implements services to interact with Twitter.
 - **constants/**: Stores shared constants and configurations.
 - **types/**: Defines TypeScript interfaces and types.
-
-### Running Tests
-Use the following command to run the test suite:
-
-```bash
-pnpm test
-```
 
 ## Contributing
 
