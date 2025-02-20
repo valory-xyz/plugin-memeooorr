@@ -116,4 +116,4 @@ Contributions are welcome! Please follow these steps:
 
 ### Contact
 
-For support or inquiries, reach out to (mailto:keshav.mishra0298@gmail.com).
+For support or inquiries, reach out to (mailto:info@valory.xyz).
