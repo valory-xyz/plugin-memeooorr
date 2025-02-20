@@ -477,20 +477,20 @@ export async function getScrapper(
       elizaLogger.info("Attempting Twitter login using cookies");
       await ts.setCookies(cookieStrings);
       if (await ts.isLoggedIn()) {
-        elizaLogger.info("Twitter login successful using cookies");
+        elizaLogger.success("Twitter login successful using cookies");
         return ts;
       }
     } else {
       throw new Error("No cookies found");
     }
-    elizaLogger.info("Twitter login successful using cookies");
+    elizaLogger.warn("Attempting Twitter login without cookies");
   } catch (error) {
     elizaLogger.warn("Failed to set cookies, Performing Normal Login:", error);
     await ts.login(username, password, email);
     const cookies = await ts.getCookies();
     fs.writeFileSync(__cookiesFilePath, JSON.stringify(cookies, null, 2));
     if (await ts.isLoggedIn()) {
-      elizaLogger.warn("Twitter login successful but without cookies");
+      elizaLogger.assert("Twitter login successful but without cookies");
       return ts;
     }
   }
