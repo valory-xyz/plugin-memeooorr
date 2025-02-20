@@ -54,12 +54,11 @@ const tweetProvider: Provider = {
       previousTweets,
     );
 
-    elizaLogger.log("Fetch other tweets from user");
+    elizaLogger.log("Fetch other tweets from user, will take time");
     let otherTweets: string = "";
     let handles: string[] = [];
     try {
       const subUrl = runtime.getSetting("SUBGRAPH_URL") as string;
-      elizaLogger.log("Subgraph URL:", subUrl);
       try {
         handles = (await scraper.getUsersFromSubgraph(
           subUrl,
