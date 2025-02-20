@@ -1,5 +1,5 @@
 import { Tweet } from "agent-twitter-client";
-
+import { MemeCoin } from "../types";
 // Define the type for the decision object
 export type Decision = {
   action: "summon" | "heart" | "unleash" | "collect" | "purge" | "burn";
@@ -27,7 +27,7 @@ export type TOKEN_SUMMARY = {
 // Function to convert content to the Decision type
 export function convertToDecision(content: any): Decision {
   return {
-    action: content.action, // Default to 'action1' if not valid
+    action: content.action, // Default to 'summon' if not valid
     tokenAddress: content.tokenAddress || "",
     tokenNonce: BigInt(content.tokenNonce || "0"),
     tokenName: content.tokenName || null,
@@ -39,13 +39,24 @@ export function convertToDecision(content: any): Decision {
   };
 }
 
-export function formatMemeCoins(memeCoins: TOKEN_SUMMARY[]): string {
-  return memeCoins
-    .filter((meme) => meme.availableActions.length > 0)
-    .map((meme) => {
-      return `Token Name: ${meme.tokenName}, Token Ticker: ${meme.tokenTicker}, Token Address: ${meme.tokenAddress}, Heart Count: ${meme.heartCount}, Available Actions: ${meme.availableActions.join(", ")}`;
-    })
-    .join("\n");
+export function formatMemeCoins(memeCoins: MemeCoin[]): string {
+  const formattedMemes = memeCoins
+    .filter((item) => item.availableActions.length > 0)
+    .map((item) => ({
+      tokenName: item.tokenName,
+      tokenTicker: item.tokenTicker,
+      tokenAddress: item.tokenAddress,
+      heartCount: item.heartCount,
+      availableActions: item.availableActions,
+    }));
+
+  const jsonFormattedMemes = JSON.stringify(
+    { "Actionable Tokens": formattedMemes },
+    null,
+    2,
+  );
+
+  return jsonFormattedMemes;
 }
 
 // Function to format tweet responses
