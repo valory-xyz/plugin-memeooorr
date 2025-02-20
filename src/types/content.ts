@@ -30,16 +30,14 @@ export interface TokenInteractionResultContent extends Content {
 
 export const TokenInteractionSchema = z.object({
   action: z.enum(["summon", "heart", "unleash", "collect", "purge", "burn"]),
-  tokenAddress: z
-    .string()
-    .refine((val) => val === "" || isAddress(val), {
-      message: "Invalid Token Address",
-    }),
-  tokenName: z.string().nullable(),
-  tokenTicker: z.string().nullable(),
-  tokenNonce: z.string(),
-  tokenSupply: z.string().nullable(),
-  amount: z.string(),
-  tweet: z.string(),
+  tokenAddress: z.string().refine((val) => val === "" || isAddress(val), {
+    message: "Invalid Token Address",
+  }),
+  tokenName: z.string(),
+  tokenTicker: z.string(),
+  tokenNonce: z.string().or(z.literal("")),
+  tokenSupply: z.string().or(z.literal("")),
+  amount: z.string().or(z.literal("0")),
+  tweet: z.string().or(z.literal("")),
   newPersona: z.string().nullable(),
 });
