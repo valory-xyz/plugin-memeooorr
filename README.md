@@ -31,7 +31,7 @@ This plugin provides:
    - Incorporates Twitter engagement metrics for holistic decision-making.
 
 ### Services
-The **TwitterService** integrates with the ElizaOS `client-twitter` module to:
+The **TwitterService** integrates with the ElizaOS `agent-twitter-client` module to:
 
 - Post tweets.
 - Reply to tweets with conversational threads.
