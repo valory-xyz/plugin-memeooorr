@@ -42,11 +42,6 @@ export const decideTokenAction = (
       _params,
       callback,
     ) => {
-      // if (message.content.action !== "TOKEN_ACTION") {
-      //   elizaLogger.error("No runtime provided");
-      //   return false;
-      // }
-
       try {
         if (!state) {
           state = await runtime.composeState(message);

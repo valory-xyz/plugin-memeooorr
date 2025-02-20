@@ -399,13 +399,6 @@ export const safeAccountProvider: Provider = {
 
       let summoned_token_nonce = undefined;
 
-      // if (decision.action === "summon") {
-      //   summoned_token_nonce = await getTokenNonce(
-      //     receipt.transactionHash,
-      //     rpcUrl,
-      //   );
-      // }
-
       const actionSuccessMemory: Memory = {
         id: stringToUuid(Date.now().toString()),
         content: {
