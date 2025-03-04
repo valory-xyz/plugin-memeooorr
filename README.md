@@ -1,5 +1,5 @@
 # plugin-memeooorr
-Eliza plugin for memeooor Agent developed on autonolas framework.
+Eliza plugin for memeooor Agent. Provides a comprehensive set of features for interacting with Twitter and analyzing cryptocurrency tokens. Enables agent builders using eliza framework to integrate agents.fun.
 
 > :warning: **Warning** <br />
 > The code within this repository is provided without any warranties. It is important to note that the code has not been audited for potential security vulnerabilities.
