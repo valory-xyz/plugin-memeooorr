@@ -1,9 +1,7 @@
 name: pnpm Example Workflow
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -26,5 +24,7 @@ jobs:
         run: pnpm install
       - name: Build
         run: pnpm build
+      - name: Set config
+        run: pnpm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
       - name: Publish
         run: pnpm publish
