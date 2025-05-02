@@ -24,7 +24,6 @@
     "@safe-global/types-kit": "1.0.2",
     "@safe-global/sdk-starter-kit": "1.1.5",
     "viem": "2.23.0",
-    "ws": "^8.0.0",
     "fs": "0.0.1-security"
   },
   "devDependencies": {

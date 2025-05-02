@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "module": "Preserve",
+    "module": "ESNext",
+    "target": "ESNext",
     "lib": ["ESNext", "dom"],
     "moduleResolution": "Bundler",
     "outDir": "./dist",

@@ -35,6 +35,7 @@ import {
   MAX_SUMMON_VALUE,
   MAX_HEART_VALUE,
 } from "../constants";
+import { ACTIONS } from "../config";
 
 // Define the type for the decision object
 type Decision = {
@@ -443,7 +444,7 @@ export const safeAccountProvider: Provider = {
 
       await runtime.databaseAdapter.createMemory(
         actionSuccessMemory,
-        decision.action,
+        ACTIONS.TOKEN_DECISION,
       );
 
       return false;

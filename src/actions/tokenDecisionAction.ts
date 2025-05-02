@@ -13,7 +13,7 @@ import {
   formatMemeCoins,
   formatTweetResponses,
 } from "../utils/twittter";
-import { TOKEN_INTERACTION_CONFIG } from "../config";
+import { ACTIONS, TOKEN_INTERACTION_CONFIG } from "../config";
 import { TokenInteractionResponse } from "../providers";
 
 const actions = TOKEN_INTERACTION_CONFIG.ACTIONS;
@@ -65,7 +65,7 @@ export const decideTokenAction = (
 
           await runtime.databaseAdapter.createMemory(
             token_action_fail_message,
-            "TOKEN_ACTION_FAILED",
+            ACTIONS.TOKEN_DECISION,
           );
           return false;
         }
@@ -295,7 +295,10 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
           agentId: runtime.agentId,
         };
 
-        await runtime.messageManager.createMemory(tokenDecisionMemory);
+        await runtime.databaseAdapter.createMemory(
+          tokenDecisionMemory,
+          ACTIONS.TOKEN_DECISION,
+        );
 
         const exectutionMemory: Memory = {
           id: stringToUuid(Date.now().toString()),
@@ -308,7 +311,10 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
           agentId: runtime.agentId,
         };
 
-        await runtime.messageManager.createMemory(exectutionMemory);
+        await runtime.databaseAdapter.createMemory(
+          exectutionMemory,
+          ACTIONS.TOKEN_DECISION,
+        );
 
         await safeAccountProvider.get(runtime, tokenDecisionMemory);
 

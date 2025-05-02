@@ -13,6 +13,7 @@ import type {
 } from "@elizaos/core";
 import type { TwitterInteractionResponse } from "../providers/twitterProvider";
 import { TwitterInteractionSchema } from "../types/content";
+import { ACTIONS } from "../config";
 
 /**
  * Action to decide on Twitter interactions (e.g., tweet, reply, like, retweet) based on persona and available tweets.
@@ -169,7 +170,7 @@ export const decideTwitterInteractionAction = (
 
         await runtime.databaseAdapter.createMemory(
           tweetActionMemory,
-          finalAction,
+          ACTIONS.TWITTER_INTERACTION,
         );
 
         twitterProvider.get(runtime, tweetActionMemory);

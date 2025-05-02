@@ -6,7 +6,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   format: ["esm"], // Ensure you're targeting CommonJS
-  dts: true, // Generate declaration files
+  dts: true, // Generate declaration files,
+  bundle: true,
   external: [
     "@elizaos/core",
     "dotenv", // Externalize dotenv to prevent bundling
