@@ -1,7 +1,10 @@
-name: pnpm Example Workflow
+name: NPM Publish
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - '*'
 
 jobs:
   build:

@@ -1,0 +1,49 @@
+name: Create Release from Tag
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get tag name
+        id: tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Get commit messages
+        id: commit_messages
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ steps.tag.outputs.TAG_NAME }}^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # If there's no previous tag, get all commit messages
+            COMMIT_LOG=$(git log --pretty=format:"- %s" ${{ steps.tag.outputs.TAG_NAME }})
+          else
+            # Get commit messages between the previous tag and this tag
+            COMMIT_LOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..${{ steps.tag.outputs.TAG_NAME }})
+          fi
+          echo "COMMIT_LOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMIT_LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.tag.outputs.TAG_NAME }}
+          body: |
+            ## Changes in this release
+            
+            ${{ steps.commit_messages.outputs.COMMIT_LOG }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
