@@ -129,6 +129,7 @@ export class SafeClient {
   private rpcUrl: string;
 
   private memeBaseChain: Chain;
+  private elizaRuntimeInstance: IAgentRuntime;
 
   /**
    * Creates a new instance of SafeClientProvider.
@@ -143,6 +144,7 @@ export class SafeClient {
     safeAddress: string,
     ownerPrivateKey: `0x${string}`,
     rpcUrl: string,
+    elizaRuntimeInstance: IAgentRuntime,
   ) {
     this.safeAddress = safeAddress;
     this.ownerPrivateKey = ownerPrivateKey;
@@ -156,6 +158,7 @@ export class SafeClient {
         },
       },
     };
+    this.elizaRuntimeInstance = elizaRuntimeInstance;
   }
 
   /**
@@ -287,7 +290,7 @@ export const getSafeAccount = (runtime: IAgentRuntime) => {
   const ownerPrivateKey = runtime.getSetting("AGENT_EOA_PK") as `0x${string}`;
   const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
 
-  return new SafeClient(safeAddress, ownerPrivateKey, rpcUrl);
+  return new SafeClient(safeAddress, ownerPrivateKey, rpcUrl, runtime);
 };
 
 export const safeAccountProvider: Provider = {

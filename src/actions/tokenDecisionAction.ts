@@ -366,6 +366,20 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
         const decision: Decision = convertToDecision(mappedCon);
         elizaLogger.log("Token decision:", JSON.stringify(decision));
 
+        if (!isNotHallucination(decision, metadata.memeCoins)) {
+          elizaLogger.error("Decision is a hallucination or invalid");
+          return false;
+        }
+        // check if the action is supported
+        if (!supportedActions.includes(decision.action)) {
+          elizaLogger.error(
+            `Action ${decision.action} is not supported. Supported actions are: ${supportedActions.join(
+              ", ",
+            )}`,
+          );
+          return false;
+        }
+
         // check if given decision is present for the token
         // Check if the given decision is present for the token
         if (decision.action !== "summon") {
