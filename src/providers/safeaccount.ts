@@ -1,5 +1,8 @@
 import Safe from "@safe-global/protocol-kit";
-import type { MetaTransactionData } from "@safe-global/types-kit";
+import type {
+  MetaTransactionData,
+  TransactionResult,
+} from "@safe-global/types-kit";
 import { OperationType } from "@safe-global/types-kit";
 import { createSafeClient } from "@safe-global/sdk-starter-kit";
 import {
@@ -8,28 +11,31 @@ import {
   type Memory,
   type State,
   stringToUuid,
+  elizaLogger,
 } from "@elizaos/core";
-import { elizaLogger } from "@elizaos/core";
 import type {
   Address,
   Chain,
   EncodeFunctionDataReturnType,
   Hex,
   TransactionReceipt,
+  GetTransactionReceiptReturnType,
 } from "viem";
 import { createWalletClient, encodeFunctionData, http, parseGwei } from "viem";
-
-import { initializeSafeClient } from "safe-client";
-
-import type { GetTransactionReceiptReturnType } from "viem";
-import type { TransactionResult } from "@safe-global/types-kit";
-import { memeFactoryAbi } from "../abi/memefactory";
 import { privateKeyToAccount, nonceManager } from "viem/accounts";
 import { base } from "viem/chains";
 
+import { memeFactoryAbi } from "../abi/memefactory";
+
 import { TwitterScraper, getScrapper } from "../utils/twitterScrapper";
 import { Scraper } from "agent-twitter-client";
-import { getTokenNonce } from "../wallet";
+import {
+  MIN_DEPLOY_VALUE,
+  MIN_SUMMON_VALUE,
+  MAX_SUMMON_VALUE,
+  MAX_HEART_VALUE,
+} from "../constants";
+import { ACTIONS } from "../config";
 
 // Define the type for the decision object
 type Decision = {
@@ -72,13 +78,27 @@ export async function waitSafeTxReceipt(
   return receipt;
 }
 
-const ZERO_VALUE = 0;
-const MIN_DEPLOY_VALUE = 1000000000000000000000000n;
-const MIN_SUMMON_VALUE = 1000000000000000n;
-const MAX_SUMMON_VALUE = 2000000000000000n;
-const MAX_HEART_VALUE = 20000000000000n;
-
 let protocolKitInstance: Safe | null = null;
+
+async function initializeSafeClient(
+  provider: string,
+  signer: `0x${string}`,
+  safeAddress: `0x${string}`,
+) {
+  // Figure out where the init function is located.
+  // In an ESM environment it may be inside Safe.default,
+  // while in other environments it may be directly on Safe.
+  const initFn = (Safe as any).default?.init ?? (Safe as any).init;
+
+  if (typeof initFn !== "function") {
+    throw new Error(
+      "Could not find an init function in the Safe module. Check the SDK export or version.",
+    );
+  }
+
+  const protocolKit = (await initFn({ provider, signer, safeAddress })) as Safe;
+  return protocolKit;
+}
 
 /**
  *
@@ -107,10 +127,9 @@ export class SafeClient {
   private ownerPrivateKey: `0x${string}`;
   // The RPC URL for the chain where the Safe is deployed.
   private rpcUrl: string;
-  // The chain identifier (as bigint). For example, Sepolia is 11155111n.
-  private chainId: bigint;
 
   private memeBaseChain: Chain;
+  private elizaRuntimeInstance: IAgentRuntime;
 
   /**
    * Creates a new instance of SafeClientProvider.
@@ -125,12 +144,11 @@ export class SafeClient {
     safeAddress: string,
     ownerPrivateKey: `0x${string}`,
     rpcUrl: string,
-    chainId: bigint,
+    elizaRuntimeInstance: IAgentRuntime,
   ) {
     this.safeAddress = safeAddress;
     this.ownerPrivateKey = ownerPrivateKey;
     this.rpcUrl = rpcUrl;
-    this.chainId = chainId;
     this.memeBaseChain = {
       ...base,
       rpcUrls: {
@@ -140,6 +158,7 @@ export class SafeClient {
         },
       },
     };
+    this.elizaRuntimeInstance = elizaRuntimeInstance;
   }
 
   /**
@@ -187,7 +206,7 @@ export class SafeClient {
         // The Protocol Kit accepts an EIP-1193 compliant signer.
         // Depending on your setup, you might need to wrap your private key with a library such as ethers.Wallet.
         this.ownerPrivateKey,
-        this.safeAddress,
+        this.safeAddress as `0x${string}`,
         // Optionally, you can add onchainAnalytics or other options here.
       );
     }
@@ -270,9 +289,8 @@ export const getSafeAccount = (runtime: IAgentRuntime) => {
   const safeAddress = runtime.getSetting("SAFE_ADDRESS") as Address;
   const ownerPrivateKey = runtime.getSetting("AGENT_EOA_PK") as `0x${string}`;
   const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
-  const chainId = BigInt("8453");
 
-  return new SafeClient(safeAddress, ownerPrivateKey, rpcUrl, chainId);
+  return new SafeClient(safeAddress, ownerPrivateKey, rpcUrl, runtime);
 };
 
 export const safeAccountProvider: Provider = {
@@ -311,7 +329,6 @@ export const safeAccountProvider: Provider = {
       let value: string = decision.amount.toString();
 
       const safeAccountClient = getSafeAccount(runtime);
-      const rpcUrl = runtime.getSetting("BASE_LEDGER_RPC") as string;
 
       let data: EncodeFunctionDataReturnType | undefined = undefined;
 
@@ -360,13 +377,13 @@ export const safeAccountProvider: Provider = {
         data = encodeFunctionData({
           abi: memeFactoryAbi,
           functionName: "collectThisMeme",
-          args: [decision.tokenAddress],
+          args: [decision.tokenAddress as `0x${string}`],
         });
       } else if (decision.action === "purge") {
         data = encodeFunctionData({
           abi: memeFactoryAbi,
           functionName: "purgeThisMeme",
-          args: [decision.tokenAddress],
+          args: [decision.tokenAddress as `0x${string}`],
         });
       } else if (decision.action === "burn") {
         data = encodeFunctionData({
@@ -378,8 +395,16 @@ export const safeAccountProvider: Provider = {
 
       const nonce = await safeAccountClient.getNonce();
 
-      if (!data || !nonce) {
-        throw new Error("Data or nonce is missing");
+      if (!nonce) {
+        elizaLogger.error("Nonce is missing");
+        return false;
+      }
+      elizaLogger.log("Fetched nonce:");
+      elizaLogger.log(nonce);
+
+      if (!data) {
+        elizaLogger.error("Data is missing");
+        return false;
       }
 
       const dataHex = await safeAccountClient.buildWalletTransaction(
@@ -389,6 +414,8 @@ export const safeAccountProvider: Provider = {
       if (!dataHex) {
         throw new Error("Data hex is missing");
       }
+      elizaLogger.log("Data hex:");
+      elizaLogger.log(JSON.stringify(dataHex));
 
       elizaLogger.success("Data hex generated successfully");
       elizaLogger.log(dataHex);
@@ -430,7 +457,7 @@ export const safeAccountProvider: Provider = {
 
       await runtime.databaseAdapter.createMemory(
         actionSuccessMemory,
-        decision.action,
+        ACTIONS.TOKEN_DECISION,
       );
 
       return false;

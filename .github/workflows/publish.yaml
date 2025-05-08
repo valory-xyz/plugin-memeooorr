@@ -1,0 +1,31 @@
+name: NPM Publish
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        node-version: [23]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build
+        run: pnpm build
+      - name: Set config
+        run: pnpm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
+      - name: Publish
+        run: pnpm publish

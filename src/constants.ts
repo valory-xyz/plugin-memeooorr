@@ -43,3 +43,8 @@ query getPackages($package_type: String!) {
     }
 }
 `;
+
+export const MIN_DEPLOY_VALUE = 1000000000000000000000000n;
+export const MIN_SUMMON_VALUE = 1000000000000000n;
+export const MAX_SUMMON_VALUE = 2000000000000000n;
+export const MAX_HEART_VALUE = 20000000000000n;

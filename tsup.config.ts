@@ -6,12 +6,10 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   format: ["esm"], // Ensure you're targeting CommonJS
-  platform: "node",
-  target: "node18",
+  dts: true, // Generate declaration files,
   bundle: true,
-  splitting: true, // Add this for better code splitting
-  dts: true, // Generate declaration files
   external: [
+    "@elizaos/core",
     "dotenv", // Externalize dotenv to prevent bundling
     "fs", // Externalize fs to use Node.js built-in module
     "path", // Externalize other built-ins if necessary
@@ -19,6 +17,7 @@ export default defineConfig({
     "https",
     // Add other modules you want to externalize
     "onnxruntime-node",
-    "sharp",
+    "zod",
+    "agentkeepalive",
   ],
 });
