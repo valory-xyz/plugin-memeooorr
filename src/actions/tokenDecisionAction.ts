@@ -7,7 +7,7 @@ import {
 } from "@elizaos/core";
 
 import { TokenInteractionSchema } from "../types/content";
-import { Decision } from "../utils/twittter";
+import { Decision } from '../utils/twittter';
 import {
   convertToDecision,
   formatMemeCoins,
@@ -15,9 +15,126 @@ import {
 } from "../utils/twittter";
 import { ACTIONS, TOKEN_INTERACTION_CONFIG } from "../config";
 import { TokenInteractionResponse } from "../providers";
+import { MemeCoin } from "../types";
 
 const actions = TOKEN_INTERACTION_CONFIG.ACTIONS;
 const ticker = TOKEN_INTERACTION_CONFIG.TICKER;
+
+function isNotHallucination(
+  decision: Decision, memeCoins: MemeCoin[],
+): decision is Exclude<Decision, { action: "summon" }> {
+  // If the action is "summon", this function should return false as per the type guard
+  if (decision.action === "summon") {
+    // For summon action, we need to validate the token creation parameters
+    // Check if required token creation parameters are present and properly formatted
+    if (!decision.tokenName) {
+      elizaLogger.error("Token name is required for summon action");
+      return false;
+    }
+    
+    if (!decision.tokenTicker) {
+      elizaLogger.error("Token ticker is required for summon action");
+      return false;
+    }
+    
+    if (!decision.tokenSupply) {
+      elizaLogger.error("Token supply is required for summon action");
+      return false;
+    }
+    
+    // Ensure token supply is at least 1 million * 10^18 as per schema requirements
+    const minSupply = BigInt(1000000) * BigInt(10) ** BigInt(18);
+    if (decision.tokenSupply < minSupply) {
+      elizaLogger.error(`Token supply must be at least 1 million * 10^18, got ${decision.tokenSupply}`);
+      return false;
+    }
+    
+    // Validate tweet for summon action
+    if (!decision.tweet || decision.tweet.length > 280) {
+      elizaLogger.error(`Tweet is required and must be <= 280 characters for summon action, got ${decision.tweet?.length || 0}`);
+      return false;
+    }
+    
+    // This is a valid summon action, but the type guard requires us to return false
+    // to indicate this is a summon action (not an Exclude<Decision, { action: "summon" }>)
+    return false;
+  }
+  
+  // For non-summon actions, verify the token exists and the action is valid
+  
+  // Verify the token address exists in the memeCoins list
+  const token = memeCoins.find(
+    (meme) => meme.tokenAddress === decision.tokenAddress,
+  );
+  if (!token) {
+    elizaLogger.error(
+      `Token with address ${decision.tokenAddress} not found`,
+    );
+    return false;
+  }
+  
+  // Verify the action is available for the token
+  if (!token.availableActions.includes(decision.action)) {
+    elizaLogger.error(
+      `Action ${decision.action} is not available for token ${decision.tokenAddress}`,
+    );
+    return false;
+  }
+  
+  // Verify token name matches if provided
+  if (
+    decision.tokenName &&
+    !memeCoins.some((meme) => meme.tokenName === decision.tokenName)
+  ) {
+    elizaLogger.error(
+      `Token name ${decision.tokenName} is not present in the list of meme coins`,
+    );
+    return false;
+  }
+  
+  // Verify token ticker matches if provided
+  if (
+    decision.tokenTicker &&
+    !memeCoins.some((meme) => meme.tokenTicker === decision.tokenTicker)
+  ) {
+    elizaLogger.error(
+      `Token ticker ${decision.tokenTicker} is not present in the list of meme coins`,
+    );
+    return false;
+  }
+  
+  // Validate action-specific parameters
+  switch (decision.action) {
+    case "heart":
+      // For heart action, amount must be greater than 0
+      if (!decision.amount || decision.amount <= BigInt(0)) {
+        elizaLogger.error(`Amount must be greater than 0 for heart action, got ${decision.amount}`);
+        return false;
+      }
+      break;
+      
+    case "unleash":
+    case "collect":
+    case "purge":
+    case "burn":
+      // These actions don't require additional validation beyond what's already checked
+      break;
+      
+    default:
+      // Unknown action type
+      elizaLogger.error(`Unknown action type: ${decision.action}`);
+      return false;
+  }
+  
+  // Validate tweet for all actions
+  if (!decision.tweet || decision.tweet.length > 280) {
+    elizaLogger.error(`Tweet is required and must be <= 280 characters, got ${decision.tweet?.length || 0}`);
+    return false;
+  }
+  
+  // All validations passed, this is a valid non-summon action
+  return true;
+}
 
 export const decideTokenAction = (
   tokenProvider: Provider,
@@ -245,9 +362,9 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
           new_persona: string | null;
         };
 
-        elizaLogger.log(mappedCon);
+        elizaLogger.log(JSON.stringify(mappedCon));
         const decision: Decision = convertToDecision(mappedCon);
-        elizaLogger.log("Token decision:", decision);
+        elizaLogger.log("Token decision:", JSON.stringify(decision));
 
         // check if given decision is present for the token
         // Check if the given decision is present for the token
@@ -286,7 +403,7 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
         const tokenDecisionMemory: Memory = {
           id: stringToUuid(Date.now().toString()),
           content: {
-            text: JSON.stringify(mappedCon),
+            text: JSON.stringify(decision),
             action: decision.action,
             source: "token_decision",
           },
@@ -305,6 +422,11 @@ You are a cryptocurrency and token expert with a specific persona. You analyze n
           content: {
             text: "Exectuting action decided by the agent",
             action: decision.action,
+            source: "token_decision",
+            tokenAddress: decision.tokenAddress,
+            tokenName: decision.tokenName,
+            tokenNonce: decision.tokenNonce,
+            tokenTicker: decision.tokenTicker,
           },
           roomId: message.roomId,
           userId: message.userId,

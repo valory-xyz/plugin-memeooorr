@@ -392,8 +392,16 @@ export const safeAccountProvider: Provider = {
 
       const nonce = await safeAccountClient.getNonce();
 
-      if (!data || !nonce) {
-        throw new Error("Data or nonce is missing");
+      if (!nonce) {
+        elizaLogger.error("Nonce is missing");
+        return false;
+      }
+      elizaLogger.log("Fetched nonce:");
+      elizaLogger.log(nonce);
+
+      if (!data) {
+        elizaLogger.error("Data is missing");
+        return false;
       }
 
       const dataHex = await safeAccountClient.buildWalletTransaction(
@@ -403,6 +411,8 @@ export const safeAccountProvider: Provider = {
       if (!dataHex) {
         throw new Error("Data hex is missing");
       }
+      elizaLogger.log("Data hex:");
+      elizaLogger.log(JSON.stringify(dataHex));
 
       elizaLogger.success("Data hex generated successfully");
       elizaLogger.log(dataHex);
