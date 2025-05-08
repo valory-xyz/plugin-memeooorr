@@ -28,6 +28,13 @@
   },
   "devDependencies": {
     "@types/node": "22.13.1",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.2.5",
     "typescript": "5.7.3",
     "ts-node": "10.9.2",
     "tsup": "8.3.5"
@@ -37,6 +44,8 @@
     "dev": "tsup --format esm --dts --watch",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "clean": "rm -rf dist",
     "clean:cache": "rm -rf node_modules/.cache .eslintcache .pnpm-store",
     "clean:deps": "rm -rf node_modules",

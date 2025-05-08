@@ -1,6 +1,6 @@
 import type { Tweet } from "agent-twitter-client";
 import { Scraper, SearchMode } from "agent-twitter-client";
-import { elizaLogger, stringToUuid } from "@elizaos/core";
+import { elizaelizaLogger, stringToUuid } from "@elizaos/core";
 import type { IAgentRuntime } from "@elizaos/core";
 import { TOKENS_QUERY, PACKAGE_QUERY } from "../constants";
 import type { MemeCoin, TokensQuery } from "../types/chains";
@@ -362,7 +362,7 @@ export class TwitterScraper {
       const filteredItems = items.filter(
         (t: any) => t.chain === "base" && parseInt(t.memeNonce) > 0,
       );
-      elizaLogger.log(filteredItems);
+      elizaLogger.debug("Filtered items", { items: filteredItems });
 
       const burnAmount = await getBurnAmount(address, rpc);
       const memeCoins: MemeCoin[] = filteredItems.map((item: any) => {
@@ -429,7 +429,7 @@ export class TwitterScraper {
 
       return memeCoins;
     } catch (error) {
-      elizaLogger.error(`Error getting tokens from subgraph: ${error}`);
+      elizaLogger.error("Error getting tokens from subgraph", { error });
       throw new Error("Failed to get tokens from subgraph");
     }
   }
@@ -467,7 +467,7 @@ export async function getScrapper(
   const password = runtime.getSetting("TWITTER_PASSWORD") as string;
   const email = runtime.getSetting("TWITTER_EMAIL") as string;
 
-  elizaLogger.info("Attempting Twitter login with username:", username, email);
+  elizaLogger.info("Attempting Twitter login", { username, email });
 
   const ts = new Scraper();
 
@@ -477,7 +477,7 @@ export async function getScrapper(
       elizaLogger.info("Attempting Twitter login using cookies");
       await ts.setCookies(cookieStrings);
       if (await ts.isLoggedIn()) {
-        elizaLogger.success("Twitter login successful using cookies");
+        elizaLogger.info("Twitter login successful using cookies");
         return ts;
       }
     } else {
@@ -485,7 +485,7 @@ export async function getScrapper(
     }
     elizaLogger.warn("Attempting Twitter login without cookies");
   } catch (error) {
-    elizaLogger.warn("Failed to set cookies, Performing Normal Login:", error);
+    elizaLogger.warn("Failed to set cookies, performing normal login", { error });
     await ts.login(username, password, email);
     const cookies = await ts.getCookies();
     fs.writeFileSync(__cookiesFilePath, JSON.stringify(cookies, null, 2));

@@ -46,6 +46,7 @@ export function formatMemeCoins(memeCoins: MemeCoin[]): string {
       tokenName: item.tokenName,
       tokenTicker: item.tokenTicker,
       tokenAddress: item.tokenAddress,
+      tokenNonce: item.memeNonce,
       heartCount: item.heartCount,
       availableActions: item.availableActions,
     }));
